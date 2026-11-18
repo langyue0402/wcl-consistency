@@ -62,19 +62,22 @@ pre-computed front-end features from a cache built once:
 export HF_ENDPOINT=https://hf-mirror.com
 ulimit -n 65535
 
-python3 scripts/preflight.py --config configs/bench.yaml
-python3 scripts/preprocess.py --config configs/bench.yaml --split train
-python3 scripts/preprocess.py --config configs/bench.yaml --split dev
-python3 scripts/preprocess.py --config configs/bench.yaml --split eval
+python3 scripts/preflight.py --config configs/three_arm_phys.yaml
+python3 scripts/preprocess.py --config configs/three_arm_phys.yaml \
+        --splits train dev eval
 
-python3 scripts/train.py --config configs/bench.yaml --loss wcl --seed 0 \
+python3 scripts/train.py --config configs/three_arm_phys.yaml --loss wcl --seed 0 \
         --tag wcl__s0 --epochs 50 --eval-every 3
-python3 scripts/evaluate.py --config configs/bench.yaml --split eval \
+python3 scripts/evaluate.py --config configs/three_arm_phys.yaml --split eval \
         --ckpt outputs/camp_v4/wcl__s0/best.pt --phases clean aec ns agc vad \
         --save-scores
 ```
 
 `--loss` selects the arm (`ce`, `tfcl`, `wcl`); there is no `--arm` flag.
+`configs/three_arm_phys.yaml` is the configuration of the paper's campaign
+(product-space cost, 8 channel groups, `grid_stride: 2`, 50 epochs).
+`configs/bench.yaml` is a small synthetic speed benchmark with a Euclidean cost;
+it is not the paper's configuration and should not be used to reproduce its numbers.
 The whole 26-run campaign runs end to end with
 
 ```bash
@@ -83,7 +86,8 @@ setsid bash scripts/run_one_shot.sh < /dev/null > logs/one_shot.log 2>&1 &
 
 ## Notes that cost us time
 
-* `preprocess.py` crashes on multiple splits in one invocation; run one split per call.
+* `preprocess.py` takes `--splits` (plural) and accepts several splits in one call;
+  a single-split invocation is also fine.
 * The evaluation stage needs the same `ulimit -n` headroom as preprocessing; without it
   the run dies with *Too many open files*.
 * Under `nohup`, background campaigns are killed when the session ends; use `setsid`.
@@ -98,7 +102,7 @@ objectives are **not distinguishable** on this corpus, backbone and distortion
 family: all paired intervals cover zero, and the pairing that the campaign does
 resolve is a per-stage one (AEC: WCL better by 0.593 EER points, five seeds out of
 five, `p = 0.053`). Turning the geometric term off raises eval EER from 3.94 to
-13.41. The transport residual saturates at 0.385–0.401 while the calibrated weight
+13.41. The product-space transport residual plateaus at 0.385–0.401 while the calibrated weight
 `λ_eff` spans a factor of 10.7. See `results/master_table.csv`.
 
 ## Citation
