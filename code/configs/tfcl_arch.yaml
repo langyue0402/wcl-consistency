@@ -1,0 +1,78 @@
+# ============================================================
+# TFCL 同架构配置：XLS-R (300M) 前端 + AASIST 后端
+# 目的：与 TFCL (Xue et al., ACM MM '26) 的 "Ours" 行做同架构对比，
+#       使差异只剩一致性损失本身（TFCL: cosine + CKA；WCL: entropic Wasserstein）。
+# ============================================================
+
+data:
+  root: data/asvspoof2019_la
+  cache_dir: cache/tfcl_arch_v3
+  sr: 16000
+
+feature:
+  type: raw                      # XLS-R 的输入是波形，不是 log-mel
+  duration: 4.0                  # 4s @16k = 64000 samples（AASIST/TFCL 同量级）
+
+afe:
+  randomize: true               # now actually implemented: every stage
+  jitter: 0.4                   # is jittered +-40% per utterance
+  seed: 0
+  stages: [aec, ns, agc, vad]
+  vad:
+    mode: zero                   # 固定为"原位置零"版 VAD：本配置对应第一次 GPU 跑（ep31 best 0.57%，eval avg 2.56%），必须可复现
+    quantile: 0.25
+    pad: 3
+
+train:
+  batch_size: 8                  # 24GB 卡建议 8~16；显存不足就减小并增大 grad_accum
+  grad_accum: 4                  # 等效 batch = 32
+  epochs: 100
+  lr: 0.0001                     # 对齐 TFCL: Adam, lr 1e-4
+  weight_decay: 0.0001           # 对齐 TFCL
+  max_grad_norm: 5.0
+  early_stop_patience: 10        # 对齐 TFCL
+  eval_every: 1
+  num_workers: 4
+  fp16: true
+  amp_dtype: bf16                # XLS-R 在 fp16 下易溢出，优先 bf16（4090/A100 均支持）
+  seed: 0
+  view_schedule: random_stage
+  stage_probs: [0.0, 0.25, 0.25, 0.25, 0.25]
+
+wcl:
+  # lambda_mode: abs   -> 直接用 lambda（与 TFCL 相同的绝对权重口径）
+  # lambda_mode: ratio -> lam_eff = alpha * CE_ref / W_ref（无量纲，跨骨干可迁移）
+  lambda_mode: ratio
+  lambda: 0.3                    # 仅 abs 模式生效；ratio 模式下作为参考值
+  alpha: 0.3                     # 一致性项初始占分类损失的比例（无量纲）
+  eps_init: 0.5
+  eps_final: 0.1
+  sinkhorn_iters: 20
+  cost_mode: product            # 显式钉住：v4 的默认值已改为 product
+  cost_normalize: mean           # cost/mean(cost): keeps mean_cost/eps in [2,10]
+  use_temporal: true
+  use_frequency: true
+
+model:
+  arch: xlsr_aasist
+  # backend = transport measures computed on the AASIST frame output
+  # (trainable, and the tensor the classifier pools over).
+  # frontend = the frozen XLS-R states -> ZERO gradient (run 1 bug).
+  measure_from: backend
+  n_subbands: 8                 # hidden=128 -> 8 bands x 16 channels
+  frontend:
+    model_name: facebook/wav2vec2-xls-r-300m
+    freeze: true                 # 冻结前端：单卡显存/优化器状态可控；如需微调设 false
+    layer_idx: -1
+  backend:
+    hidden: 128
+    n_layers: 4
+    n_heads: 4
+    dropout: 0.1
+
+eval:
+  phases: [clean, aec, ns, agc, vad]
+  batch_size: 8
+  num_workers: 4
+
+out_dir: outputs/tfcl_arch

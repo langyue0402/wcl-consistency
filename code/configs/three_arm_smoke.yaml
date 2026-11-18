@@ -1,0 +1,95 @@
+# 微型验证配置（三臂 v2，CPU 可跑）
+# 用途：在没有 GPU、不下载 300M 权重时，验证
+#   1) 真截断 VAD 生效且不炸；
+#   2) physical 代价矩阵（含 λ|i−j|）能前向/反向；
+#   3) ce / tfcl / wcl 三臂都能在同一管线上跑完并出 eval json。
+# 不可用于正式实验（前端是随机初始化的微型 XLS-R）。
+data:
+  root: data/synth_asvspoof
+  cache_dir: cache/phys_smoke_v4
+  sr: 16000
+
+feature:
+  type: raw
+  duration: 2.0                  # 微型骨干在 4 s 上会给出 1280 帧，CPU 上太慢
+
+afe:
+  randomize: true               # now actually implemented: every stage
+  jitter: 0.4                   # is jittered +-40% per utterance
+  seed: 0
+  stages: [aec, ns, agc, vad]
+  vad:
+    mode: truncate
+    truncate_mode: span
+    quantile: 0.25
+    pad: 3
+    min_keep_s: 0.25
+    extra_trim_s: 0.08
+    extra_trim_jitter_s: 0.12
+
+train:
+  batch_size: 2
+  grad_accum: 1
+  epochs: 2
+  lr: 0.0001
+  weight_decay: 0.0001
+  max_grad_norm: 5.0
+  early_stop_patience: 10
+  eval_every: 1
+  num_workers: 0
+  fp16: false
+  seed: 0
+  view_schedule: random_stage
+  stage_probs: [0.0, 0.25, 0.25, 0.25, 0.25]
+
+wcl:
+  lambda_mode: ratio
+  lambda: 0.3
+  alpha: 0.3
+  eps_init: 0.5
+  eps_final: 0.1
+  sinkhorn_iters: 10
+  cost_mode: product             # 乘积空间单次传输（v4 主口径）
+  geo_mode: calibrate
+  beta_t: 1.0
+  beta_f: 1.0
+  lambda_t: 1.0
+  lambda_f: 0.5
+  grid_stride: 8                 # 微型骨干 T=640，8 帧平均后 80 个时间格
+  cost_normalize: mean
+  use_temporal: true
+  use_frequency: true
+
+model:
+  arch: xlsr_aasist
+  # backend = transport measures computed on the AASIST frame output
+  # (trainable, and the tensor the classifier pools over).
+  # frontend = the frozen XLS-R states -> ZERO gradient (run 1 bug).
+  measure_from: backend
+  n_subbands: 4                 # hidden=32 -> 4 bands x 8 channels
+  frontend:
+    pretrained: false
+    freeze: true
+    config_overrides:
+      hidden_size: 64
+      num_hidden_layers: 2
+      num_attention_heads: 2
+      intermediate_size: 128
+      conv_dim: [32, 32]
+      conv_stride: [10, 5]
+      conv_kernel: [10, 3]
+      num_conv_pos_embeddings: 16
+      num_conv_pos_embedding_groups: 2
+      feat_extract_norm: layer
+  backend:
+    hidden: 32
+    n_layers: 2
+    n_heads: 2
+    dropout: 0.1
+
+eval:
+  phases: [clean, aec, ns, agc, vad]
+  batch_size: 2
+  num_workers: 0
+
+out_dir: outputs/phys_smoke

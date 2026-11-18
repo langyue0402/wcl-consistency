@@ -1,0 +1,14 @@
+cff-version: 1.2.0
+message: "If you use this code or these results, please cite the manuscript below."
+title: "Wasserstein Consistency Learning: A Single Sinkhorn Transport Term Replaces the Cosine and CKA Pair in ASVspoof 2019 LA Front-End Robustness"
+authors:
+  - family-names: "Wang"
+    given-names: "Jiang"
+    affiliation: "Hebei North University"
+  - family-names: "Lang"
+    given-names: "Yue"
+    affiliation: "Hebei North University"
+    orcid: "https://orcid.org/0009-0002-9802-7705"
+year: 2026
+type: software
+license: MIT

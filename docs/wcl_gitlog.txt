@@ -1,0 +1,5 @@
+0d17b29 data: scripts/fetch_data.py 从 hf-mirror 多线程拉 ASVspoof2019_LA 并还原官方布局；run_one_shot/preflight/README/requirements 接入；tests 37 passed
+f24d989 v6: sinkhorn_plan 不再 unilateral 修正列边际(+marginal_residual/n_polish)、diagnose 加 jitter 与 VAD 支撑 gate、回归测试 34 passed
+b77853c v5: ce_cleanonly 进 core 三 seed、删 wcl_stride4、ALPHA_SWEEP 口径注释、BUDGET_HOURS=155；losses.py docstring 更新
+d5dabfc v4 合入 + preflight.py + run_one_shot.sh + train.py --abort-on-flat/λ·ε 记录; epochs 50, dev_phases clean+vad
+106ba5c v2026-11-09：合并 v3 + 三处补丁（measure_from 默认 backend、resume 恢复 Adam、断言跟随 measure_dim），新增 legacy_run1 复现配置；29 passed

@@ -1,0 +1,70 @@
+# ============================================================
+# 真实 300M 骨干的速度基准：1 epoch，只为测显存与单步耗时
+# ============================================================
+data:
+  root: data/synth_asvspoof
+  cache_dir: cache/bench_v3
+  sr: 16000
+
+feature:
+  type: raw
+  duration: 4.0
+
+afe:
+  randomize: true               # now actually implemented: every stage
+  jitter: 0.4                   # is jittered +-40% per utterance
+  seed: 0
+  stages: [aec, ns, agc, vad]
+
+train:
+  batch_size: 16
+  grad_accum: 1
+  epochs: 1
+  lr: 0.0001
+  weight_decay: 0.0001
+  max_grad_norm: 5.0
+  early_stop_patience: 10
+  eval_every: 1
+  num_workers: 4
+  fp16: true
+  amp_dtype: bf16
+  seed: 0
+  view_schedule: random_stage
+  stage_probs: [0.0, 0.25, 0.25, 0.25, 0.25]
+
+wcl:
+  loss_mode: wcl
+  lambda_mode: abs
+  lambda: 0.3
+  alpha: 0.3
+  eps_init: 0.5
+  eps_final: 0.1
+  sinkhorn_iters: 20
+  cost_mode: euclidean            # 显式钉住：v4 的默认值已改为 product
+  cost_normalize: mean           # cost/mean(cost): keeps mean_cost/eps in [2,10]
+  use_temporal: true
+  use_frequency: true
+
+model:
+  arch: xlsr_aasist
+  # backend = transport measures computed on the AASIST frame output
+  # (trainable, and the tensor the classifier pools over).
+  # frontend = the frozen XLS-R states -> ZERO gradient (run 1 bug).
+  measure_from: backend
+  n_subbands: 8                 # hidden=128 -> 8 x 16 channels per band
+  frontend:
+    model_name: /root/wcl_work/models/xlsr300m
+    freeze: true
+    layer_idx: -1
+  backend:
+    hidden: 128
+    n_layers: 4
+    n_heads: 4
+    dropout: 0.1
+
+eval:
+  phases: [clean, aec]
+  batch_size: 16
+  num_workers: 4
+
+out_dir: outputs/bench

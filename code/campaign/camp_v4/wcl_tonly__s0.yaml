@@ -1,0 +1,87 @@
+data:
+  root: data/asvspoof2019_la
+  cache_dir: cache/phys_v4
+  sr: 16000
+feature:
+  type: raw
+  duration: 4.0
+afe:
+  randomize: true
+  jitter: 0.4
+  seed: 0
+  stages:
+  - aec
+  - ns
+  - agc
+  - vad
+  vad:
+    mode: truncate
+    truncate_mode: span
+    quantile: 0.25
+    pad: 3
+    min_keep_s: 0.25
+    extra_trim_s: 0.08
+    extra_trim_jitter_s: 0.12
+train:
+  batch_size: 8
+  grad_accum: 4
+  epochs: 50
+  lr: 0.0001
+  weight_decay: 0.0001
+  max_grad_norm: 5.0
+  early_stop_patience: 10
+  eval_every: 3
+  num_workers: 4
+  fp16: true
+  amp_dtype: bf16
+  seed: 0
+  view_schedule: random_stage
+  stage_probs:
+  - 0.0
+  - 0.25
+  - 0.25
+  - 0.25
+  - 0.25
+  dev_phases:
+  - clean
+  - vad
+wcl:
+  lambda_mode: ratio
+  alpha: 0.3
+  lambda_couple: none
+  eps_init: 0.5
+  eps_final: 0.1
+  sinkhorn_iters: 20
+  cost_mode: product
+  geo_mode: calibrate
+  beta_t: 1.0
+  beta_f: 0.0
+  lambda_t: 1.0
+  lambda_f: 0.5
+  grid_stride: 2
+  cost_normalize: mean
+  use_temporal: true
+  use_frequency: true
+model:
+  arch: xlsr_aasist
+  measure_from: backend
+  n_subbands: 8
+  frontend:
+    model_name: facebook/wav2vec2-xls-r-300m
+    freeze: true
+    layer_idx: -1
+  backend:
+    hidden: 128
+    n_layers: 4
+    n_heads: 4
+    dropout: 0.1
+eval:
+  phases:
+  - clean
+  - aec
+  - ns
+  - agc
+  - vad
+  batch_size: 8
+  num_workers: 4
+out_dir: outputs/camp_v4

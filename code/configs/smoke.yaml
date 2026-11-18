@@ -1,0 +1,67 @@
+# ============================================================
+# WCL 快速验证配置（smoke test）
+# 用途：验证数据→特征→训练→评估→推理 全链路可跑通
+# 在 CPU 或小 GPU 上 2-3 分钟完成
+# ============================================================
+
+data:
+  root: data/asvspoof2019_la      # ASVspoof2019_LA 解压后目录（见 README）
+  cache_dir: cache/smoke_v3          # 特征缓存目录（自动创建）
+  sr: 16000
+
+feature:
+  n_fft: 512
+  hop: 160
+  n_mels: 80
+  max_frames: 320                 # 3.2s 固定帧长（smoke 用短长度）
+  normalize: meanstd              # meanstd | minmax
+  random_crop: false
+
+afe:
+  # 纯 Python 简化模拟（方法思路对齐论文，非 WebRTC 精确实现）
+  # 每阶段参数含义见 wcl/afe.py 文档字符串
+  randomize: true                 # 训练时参数加随机扰动
+  seed: 0
+  stages: [aec, ns, agc, vad]     # 级联顺序
+
+train:
+  batch_size: 16
+  epochs: 3
+  lr: 0.0001
+  weight_decay: 0.0001
+  max_grad_norm: 5.0
+  early_stop_patience: 10
+  eval_every: 1                   # 每 N epoch 评估 dev
+  num_workers: 2
+  fp16: false
+  seed: 0
+  # 训练时失真视图的采样方式
+  # random_stage: 每个 batch 随机选一个 AFE 阶段作为失真视图（多样性好）
+  # full_cascade: 固定用四阶段全管线（对齐论文协议）
+  view_schedule: random_stage
+  stage_probs: [0.0, 0.25, 0.25, 0.25, 0.25]   # [clean, aec, ns, agc, vad]
+
+wcl:
+  lambda: 0.3                     # 一致性项权重（Proposition 4：λ 与 ε 只以 λ/ε 组合出现）
+  eps_init: 0.1                   # 熵正则初始值
+  eps_final: 0.01                 # 退火终值（随 epoch 线性衰减）
+  sinkhorn_iters: 20              # Sinkhorn 迭代次数（论文 k=20）
+  cost_mode: euclidean            # 显式钉住：v4 的默认值已改为 product
+  cost_normalize: mean           # cost/mean(cost): keeps mean_cost/eps in [2,10]
+  use_temporal: true              # 时域测度 W_{1,εt}
+  use_frequency: true             # 频域测度 W_{1,εf}
+
+model:
+  # 轻量 2D-CNN 编码器（保持时频结构到输出层，供 WCL 测度使用）
+  base_channels: [32, 64, 128, 256]
+  se_blocks: [true, true, true, true]
+  dropout: 0.3
+  embed_dim: 128                  # 分类头隐层
+
+eval:
+  # 阶段前缀评估：clean / aec / aec+ns / aec+ns+agc / 全管线（对齐论文表 1）
+  phases: [clean, aec, ns, agc, vad]
+  batch_size: 32
+  num_workers: 2
+
+out_dir: outputs/smoke

@@ -1,0 +1,110 @@
+# ============================================================
+# 三臂对照实验（v4）：目标函数改为乘积空间上的单次传输
+# ------------------------------------------------------------
+# 与 v2/v3 的关键差别（v3 的两个缺陷在实测里被抓出来了）：
+#   1) cost_mode: product —— 不再是 W_t(时间边缘) + W_f(频轴边缘)，
+#      而是在 T'×F' 个格点上做一次传输，代价 = ||Δv|| + λt|Δt|/(T-1) + λf|Δf|/(F-1)。
+#      原因：两个边缘传输之和**控制不了**乘积空间上的 W_1，而定理 2 界的是后者。
+#      反例见 tests/test_wcl.py::test_product_cost_is_blind_spot_free
+#      （对角团 vs 反对角团：边缘项超额恰好 0.0000，乘积项非零）。
+#      旧的 "marginal" 形式保留为消融项。
+#   2) geo_mode: calibrate —— λt 不再是手填的 1.0。λt=1 的含义是"跨 200 帧才花
+#      1 个特征距离"，80~200 ms 的 VAD 位移只值 0.02，几何项仍然看不见。
+#      现在按 beta_t * mean(特征代价) / mean(位移) 在初始 batch 上标定，
+#      与 alpha 标定 λ 是同一套思路（Remark 1 往下推一层）。
+#   3) grid_stride: 2 —— 时间轴 2 帧平均，格点数 1600 -> 800，代价矩阵小 4 倍。
+#      实测（CPU, batch 8）：stride 1 = 9.3 s，2 = 1.86 s，4 = 0.48 s（前+反向）。
+#
+# 三臂（--loss ce / tfcl / wcl）共用本文件、共用缓存、共用 schedule，
+# 且三臂的 λ 都按 alpha 标定（tfcl 臂不再用参考文献里那个只对它自己成立的 0.3），
+# 因此差异只剩损失函数本身。跑法见 scripts/run_three_arm.sh。
+# ============================================================
+
+data:
+  root: data/asvspoof2019_la
+  cache_dir: cache/phys_v4
+  sr: 16000
+
+feature:
+  type: raw                      # XLS-R 的输入是波形，不是 log-mel
+  duration: 4.0                  # 4s @16k = 64000 samples
+
+afe:
+  randomize: true               # every stage parameter is jittered per utterance
+  jitter: 0.4                   # +-40%
+  seed: 0
+  stages: [aec, ns, agc, vad]
+  vad:
+    mode: truncate               # 真截断：能量低于分位阈值的区域被删掉而非置零
+    truncate_mode: span          # span=剪掉首尾静音；stitch=连内部静音一起删
+    quantile: 0.25
+    pad: 3
+    min_keep_s: 0.25             # 截断后过短则回退原信号，保证相位定义良好
+    # ASVspoof LA 的片段切得很紧，能量型 VAD 几乎删不掉东西（实测平均 <1%），
+    # 因此再加一个受控的"支撑位移"：从头部剪掉 80~200 ms（按 utterance 抖动）。
+    # 跑前用 scripts/check_afe_geometry.py 验证幅度。
+    extra_trim_s: 0.08
+    extra_trim_jitter_s: 0.12
+
+train:
+  batch_size: 8
+  grad_accum: 4                  # 等效 batch = 32
+  epochs: 50                   # 上限 50；patience 10，首跑在 41 轮早停
+  lr: 0.0001
+  weight_decay: 0.0001
+  max_grad_norm: 5.0
+  early_stop_patience: 10
+  eval_every: 3                  # 每 epoch 五阶段 dev = 11 min，是最大的一笔开销
+  num_workers: 4                 # 评估时 4 个 worker 会超句柄上限，须 ulimit -n 65536
+  fp16: true
+  amp_dtype: bf16
+  seed: 0
+  view_schedule: random_stage
+  stage_probs: [0.0, 0.25, 0.25, 0.25, 0.25]
+  dev_phases: [clean, vad]     # 早停只看这两相；最终表仍在 eval 上跑五相
+
+wcl:
+  lambda_mode: ratio
+  alpha: 0.3                     # 一致性项在初始化时占 CE 的比例（无量纲）
+  # Prop.4 的正确形式是 λ·W_{1,ε}(c) = W_{1,λε}(λc)，所以固定代价时
+  # (λ,ε) 只以 (c/ε, λε) 进入：ε 是温度，λε 才是强度。
+  # none           = 固定 λ（草稿的描述；ε 退火会顺手把一致性强度削弱 5 倍）
+  # const_product  = 固定 λε（纯温度退火，消融项）
+  lambda_couple: none
+  eps_init: 0.5
+  eps_final: 0.1
+  sinkhorn_iters: 20
+  cost_mode: product             # product | marginal | euclidean（后两个是消融）
+  geo_mode: calibrate            # calibrate | fixed
+  beta_t: 1.0                    # 几何项 / 特征项 在初始化时的比例
+  beta_f: 1.0
+  lambda_t: 1.0                  # geo_mode=fixed 时才生效
+  lambda_f: 0.5
+  grid_stride: 2                 # 时间轴 2 帧平均，换取 4x 的 Sinkhorn 速度
+  cost_normalize: mean           # cost/mean(cost): keeps mean_cost/eps in [2,10]
+  use_temporal: true             # product 模式下由 lambda_t/lambda_f 控制
+  use_frequency: true
+
+model:
+  arch: xlsr_aasist
+  # backend = transport measures computed on the AASIST frame output
+  # (trainable, and the tensor the classifier pools over).
+  # frontend = the frozen XLS-R states -> ZERO gradient (run 1 bug).
+  measure_from: backend
+  n_subbands: 8                 # hidden=128 -> 8 bands x 16 channels
+  frontend:
+    model_name: facebook/wav2vec2-xls-r-300m
+    freeze: true
+    layer_idx: -1
+  backend:
+    hidden: 128
+    n_layers: 4
+    n_heads: 4
+    dropout: 0.1
+
+eval:
+  phases: [clean, aec, ns, agc, vad]
+  batch_size: 8
+  num_workers: 4
+
+out_dir: outputs/phys_v4

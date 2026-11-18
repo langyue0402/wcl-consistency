@@ -1,0 +1,61 @@
+# [legacy] 首跑口径，已由 configs/three_arm_phys.yaml（v4）取代；
+# 保留用于复现 run 1，不要用它出表。
+# ============================================================
+# WCL 全量训练配置（对齐论文 5.4 节 Proposed training protocol）
+# ASVspoof 2019 LA 全部训练集 + 100 epochs + RTX 4090
+# ============================================================
+
+data:
+  root: data/asvspoof2019_la
+  cache_dir: cache/full_v3
+  sr: 16000
+
+feature:
+  n_fft: 512
+  hop: 160
+  n_mels: 80
+  max_frames: 640                 # 6.4s 固定帧长（AASIST 同量级，覆盖绝大多数 LA 音频）
+  normalize: meanstd
+  random_crop: true               # 训练时随机裁剪子段增强
+
+afe:
+  randomize: true
+  seed: 0
+  stages: [aec, ns, agc, vad]
+
+train:
+  batch_size: 32
+  epochs: 100
+  lr: 0.0001
+  weight_decay: 0.0001
+  max_grad_norm: 5.0
+  early_stop_patience: 10
+  eval_every: 1
+  num_workers: 4
+  fp16: true
+  seed: 0
+  view_schedule: random_stage
+  stage_probs: [0.0, 0.25, 0.25, 0.25, 0.25]
+
+wcl:
+  lambda: 0.3
+  eps_init: 0.1
+  eps_final: 0.01
+  sinkhorn_iters: 20
+  cost_mode: euclidean            # 显式钉住：v4 的默认值已改为 product
+  cost_normalize: mean           # cost/mean(cost): keeps mean_cost/eps in [2,10]
+  use_temporal: true
+  use_frequency: true
+
+model:
+  base_channels: [32, 64, 128, 256]
+  se_blocks: [true, true, true, true]
+  dropout: 0.3
+  embed_dim: 128
+
+eval:
+  phases: [clean, aec, ns, agc, vad]
+  batch_size: 32
+  num_workers: 4
+
+out_dir: outputs/full

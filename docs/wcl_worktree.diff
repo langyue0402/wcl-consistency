@@ -1,0 +1,2866 @@
+diff --git a/campaign/camp_v4/manifest.tsv b/campaign/camp_v4/manifest.tsv
+index f738094..0388c42 100644
+--- a/campaign/camp_v4/manifest.tsv
++++ b/campaign/camp_v4/manifest.tsv
+@@ -11,14 +11,16 @@ wcl__s2	core	wcl	campaign/camp_v4/wcl__s2.yaml	cache/phys_v4
+ ce_cleanonly__s0	core	ce	campaign/camp_v4/ce_cleanonly__s0.yaml	cache/phys_v4
+ ce_cleanonly__s1	core	ce	campaign/camp_v4/ce_cleanonly__s1.yaml	cache/phys_v4
+ ce_cleanonly__s2	core	ce	campaign/camp_v4/ce_cleanonly__s2.yaml	cache/phys_v4
+-wcl_marginal__s0	abl	wcl	campaign/camp_v4/wcl_marginal__s0.yaml	cache/phys_v4
+ wcl_nogeo__s0	abl	wcl	campaign/camp_v4/wcl_nogeo__s0.yaml	cache/phys_v4
+-wcl_lam1__s0	abl	wcl	campaign/camp_v4/wcl_lam1__s0.yaml	cache/phys_v4
+-wcl_frontend__s0	abl	wcl	campaign/camp_v4/wcl_frontend__s0.yaml	cache/phys_v4
+ wcl_tonly__s0	abl	wcl	campaign/camp_v4/wcl_tonly__s0.yaml	cache/phys_v4
+ wcl_fonly__s0	abl	wcl	campaign/camp_v4/wcl_fonly__s0.yaml	cache/phys_v4
+ wcl_constprod__s0	abl	wcl	campaign/camp_v4/wcl_constprod__s0.yaml	cache/phys_v4
+-wcl_stride1__s0	abl	wcl	campaign/camp_v4/wcl_stride1__s0.yaml	cache/phys_v4
+-tfcl_ckabatch__s0	abl	tfcl	campaign/camp_v4/tfcl_ckabatch__s0.yaml	cache/phys_v4
+-wcl_a0.1__s0	alpha	wcl	campaign/camp_v4/wcl_a0.1__s0.yaml	cache/phys_v4
++wcl_marginal__s0	abl	wcl	campaign/camp_v4/wcl_marginal__s0.yaml	cache/phys_v4
+ wcl_a1.0__s0	alpha	wcl	campaign/camp_v4/wcl_a1.0__s0.yaml	cache/phys_v4
++wcl_a0.1__s0	alpha	wcl	campaign/camp_v4/wcl_a0.1__s0.yaml	cache/phys_v4
++ce__s3	seeds	ce	campaign/camp_v4/ce__s3.yaml	cache/phys_v4
++wcl__s3	seeds	wcl	campaign/camp_v4/wcl__s3.yaml	cache/phys_v4
++ce__s4	seeds	ce	campaign/camp_v4/ce__s4.yaml	cache/phys_v4
++wcl__s4	seeds	wcl	campaign/camp_v4/wcl__s4.yaml	cache/phys_v4
++tfcl__s3	seeds	tfcl	campaign/camp_v4/tfcl__s3.yaml	cache/phys_v4
++tfcl__s4	seeds	tfcl	campaign/camp_v4/tfcl__s4.yaml	cache/phys_v4
+diff --git a/configs/_tiny_verify.yaml b/configs/_tiny_verify.yaml
+index 66a9bf1..4e2a0dc 100644
+--- a/configs/_tiny_verify.yaml
++++ b/configs/_tiny_verify.yaml
+@@ -1,77 +1,77 @@
+-# 临时验证配置：微型随机初始化 XLS-R（不下载 300M 权重）
+-# 仅用于在无 GPU / 无权重下载的机器上验证 raw 波形全链路，不可用于正式实验。
+-data:
+-  root: data/synth_asvspoof
+-  cache_dir: cache/tiny_verify_v3
+-  sr: 16000
+-
+-feature:
+-  type: raw
+-  duration: 4.0
+-
+-afe:
+-  randomize: true               # now actually implemented: every stage
+-  jitter: 0.4                   # is jittered +-40% per utterance
+-  seed: 0
+-  stages: [aec, ns, agc, vad]
+-
+-train:
+-  batch_size: 2
+-  grad_accum: 1
+-  epochs: 2
+-  lr: 0.0001
+-  weight_decay: 0.0001
+-  max_grad_norm: 5.0
+-  early_stop_patience: 10
+-  eval_every: 1
+-  num_workers: 0
+-  fp16: false
+-  seed: 0
+-  view_schedule: random_stage
+-  stage_probs: [0.0, 0.25, 0.25, 0.25, 0.25]
+-
+-wcl:
+-  lambda_mode: ratio             # 验证 ratio 标定路径
+-  lambda: 0.3
+-  alpha: 0.3
+-  eps_init: 0.5
+-  eps_final: 0.1
+-  sinkhorn_iters: 20
+-  cost_mode: product            # 显式钉住：v4 的默认值已改为 product
+-  cost_normalize: mean           # cost/mean(cost): keeps mean_cost/eps in [2,10]
+-  use_temporal: true
+-  use_frequency: true
+-
+-model:
+-  arch: xlsr_aasist
+-  # backend = transport measures computed on the AASIST frame output
+-  # (trainable, and the tensor the classifier pools over).
+-  # frontend = the frozen XLS-R states -> ZERO gradient (run 1 bug).
+-  measure_from: backend
+-  n_subbands: 8                 # hidden=128 -> 8 x 16 channels per band
+-  frontend:
+-    pretrained: false
+-    freeze: true
+-    config_overrides:
+-      hidden_size: 64
+-      num_hidden_layers: 2
+-      num_attention_heads: 2
+-      intermediate_size: 128
+-      conv_dim: [32, 32]
+-      conv_stride: [10, 5]
+-      conv_kernel: [10, 3]
+-      num_conv_pos_embeddings: 16
+-      num_conv_pos_embedding_groups: 2
+-      feat_extract_norm: layer
+-  backend:
+-    hidden: 32
+-    n_layers: 2
+-    n_heads: 2
+-    dropout: 0.1
+-
+-eval:
+-  phases: [clean, aec, ns, agc, vad]
+-  batch_size: 2
+-  num_workers: 0
+-
+-out_dir: outputs/_tiny_verify
++# 临时验证配置：微型随机初始化 XLS-R（不下载 300M 权重）
++# 仅用于在无 GPU / 无权重下载的机器上验证 raw 波形全链路，不可用于正式实验。
++data:
++  root: data/synth_asvspoof
++  cache_dir: cache/tiny_verify_v3
++  sr: 16000
++
++feature:
++  type: raw
++  duration: 4.0
++
++afe:
++  randomize: true               # now actually implemented: every stage
++  jitter: 0.4                   # is jittered +-40% per utterance
++  seed: 0
++  stages: [aec, ns, agc, vad]
++
++train:
++  batch_size: 2
++  grad_accum: 1
++  epochs: 2
++  lr: 0.0001
++  weight_decay: 0.0001
++  max_grad_norm: 5.0
++  early_stop_patience: 10
++  eval_every: 1
++  num_workers: 0
++  fp16: false
++  seed: 0
++  view_schedule: random_stage
++  stage_probs: [0.0, 0.25, 0.25, 0.25, 0.25]
++
++wcl:
++  lambda_mode: ratio             # 验证 ratio 标定路径
++  lambda: 0.3
++  alpha: 0.3
++  eps_init: 0.5
++  eps_final: 0.1
++  sinkhorn_iters: 20
++  cost_mode: product            # 显式钉住：v4 的默认值已改为 product
++  cost_normalize: mean           # cost/mean(cost): keeps mean_cost/eps in [2,10]
++  use_temporal: true
++  use_frequency: true
++
++model:
++  arch: xlsr_aasist
++  # backend = transport measures computed on the AASIST frame output
++  # (trainable, and the tensor the classifier pools over).
++  # frontend = the frozen XLS-R states -> ZERO gradient (run 1 bug).
++  measure_from: backend
++  n_subbands: 8                 # hidden=128 -> 8 x 16 channels per band
++  frontend:
++    pretrained: false
++    freeze: true
++    config_overrides:
++      hidden_size: 64
++      num_hidden_layers: 2
++      num_attention_heads: 2
++      intermediate_size: 128
++      conv_dim: [32, 32]
++      conv_stride: [10, 5]
++      conv_kernel: [10, 3]
++      num_conv_pos_embeddings: 16
++      num_conv_pos_embedding_groups: 2
++      feat_extract_norm: layer
++  backend:
++    hidden: 32
++    n_layers: 2
++    n_heads: 2
++    dropout: 0.1
++
++eval:
++  phases: [clean, aec, ns, agc, vad]
++  batch_size: 2
++  num_workers: 0
++
++out_dir: outputs/_tiny_verify
+diff --git a/configs/bench.yaml b/configs/bench.yaml
+index a66e12a..143f08b 100644
+--- a/configs/bench.yaml
++++ b/configs/bench.yaml
+@@ -1,70 +1,70 @@
+-# ============================================================
+-# 真实 300M 骨干的速度基准：1 epoch，只为测显存与单步耗时
+-# ============================================================
+-data:
+-  root: data/synth_asvspoof
+-  cache_dir: cache/bench_v3
+-  sr: 16000
+-
+-feature:
+-  type: raw
+-  duration: 4.0
+-
+-afe:
+-  randomize: true               # now actually implemented: every stage
+-  jitter: 0.4                   # is jittered +-40% per utterance
+-  seed: 0
+-  stages: [aec, ns, agc, vad]
+-
+-train:
+-  batch_size: 16
+-  grad_accum: 1
+-  epochs: 1
+-  lr: 0.0001
+-  weight_decay: 0.0001
+-  max_grad_norm: 5.0
+-  early_stop_patience: 10
+-  eval_every: 1
+-  num_workers: 4
+-  fp16: true
+-  amp_dtype: bf16
+-  seed: 0
+-  view_schedule: random_stage
+-  stage_probs: [0.0, 0.25, 0.25, 0.25, 0.25]
+-
+-wcl:
+-  loss_mode: wcl
+-  lambda_mode: abs
+-  lambda: 0.3
+-  alpha: 0.3
+-  eps_init: 0.5
+-  eps_final: 0.1
+-  sinkhorn_iters: 20
+-  cost_mode: euclidean            # 显式钉住：v4 的默认值已改为 product
+-  cost_normalize: mean           # cost/mean(cost): keeps mean_cost/eps in [2,10]
+-  use_temporal: true
+-  use_frequency: true
+-
+-model:
+-  arch: xlsr_aasist
+-  # backend = transport measures computed on the AASIST frame output
+-  # (trainable, and the tensor the classifier pools over).
+-  # frontend = the frozen XLS-R states -> ZERO gradient (run 1 bug).
+-  measure_from: backend
+-  n_subbands: 8                 # hidden=128 -> 8 x 16 channels per band
+-  frontend:
+-    model_name: /root/wcl_work/models/xlsr300m
+-    freeze: true
+-    layer_idx: -1
+-  backend:
+-    hidden: 128
+-    n_layers: 4
+-    n_heads: 4
+-    dropout: 0.1
+-
+-eval:
+-  phases: [clean, aec]
+-  batch_size: 16
+-  num_workers: 4
+-
+-out_dir: outputs/bench
++# ============================================================
++# 真实 300M 骨干的速度基准：1 epoch，只为测显存与单步耗时
++# ============================================================
++data:
++  root: data/synth_asvspoof
++  cache_dir: cache/bench_v3
++  sr: 16000
++
++feature:
++  type: raw
++  duration: 4.0
++
++afe:
++  randomize: true               # now actually implemented: every stage
++  jitter: 0.4                   # is jittered +-40% per utterance
++  seed: 0
++  stages: [aec, ns, agc, vad]
++
++train:
++  batch_size: 16
++  grad_accum: 1
++  epochs: 1
++  lr: 0.0001
++  weight_decay: 0.0001
++  max_grad_norm: 5.0
++  early_stop_patience: 10
++  eval_every: 1
++  num_workers: 4
++  fp16: true
++  amp_dtype: bf16
++  seed: 0
++  view_schedule: random_stage
++  stage_probs: [0.0, 0.25, 0.25, 0.25, 0.25]
++
++wcl:
++  loss_mode: wcl
++  lambda_mode: abs
++  lambda: 0.3
++  alpha: 0.3
++  eps_init: 0.5
++  eps_final: 0.1
++  sinkhorn_iters: 20
++  cost_mode: euclidean            # 显式钉住：v4 的默认值已改为 product
++  cost_normalize: mean           # cost/mean(cost): keeps mean_cost/eps in [2,10]
++  use_temporal: true
++  use_frequency: true
++
++model:
++  arch: xlsr_aasist
++  # backend = transport measures computed on the AASIST frame output
++  # (trainable, and the tensor the classifier pools over).
++  # frontend = the frozen XLS-R states -> ZERO gradient (run 1 bug).
++  measure_from: backend
++  n_subbands: 8                 # hidden=128 -> 8 x 16 channels per band
++  frontend:
++    model_name: /root/wcl_work/models/xlsr300m
++    freeze: true
++    layer_idx: -1
++  backend:
++    hidden: 128
++    n_layers: 4
++    n_heads: 4
++    dropout: 0.1
++
++eval:
++  phases: [clean, aec]
++  batch_size: 16
++  num_workers: 4
++
++out_dir: outputs/bench
+diff --git a/configs/run_la.yaml b/configs/run_la.yaml
+index 791a822..8167a62 100644
+--- a/configs/run_la.yaml
++++ b/configs/run_la.yaml
+@@ -1,71 +1,71 @@
+-# ============================================================
+-# ASVspoof2019 LA 正式跑（一天预算内的受控三档对比）
+-# 骨干：XLS-R 300M（冻结）+ AASIST 后端，与对比文献同架构
+-# ============================================================
+-data:
+-  root: data/asvspoof2019_la
+-  cache_dir: cache/la_v3
+-  sr: 16000
+-
+-feature:
+-  type: raw
+-  duration: 4.0
+-
+-afe:
+-  randomize: true               # now actually implemented: every stage
+-  jitter: 0.4                   # is jittered +-40% per utterance
+-  seed: 0
+-  stages: [aec, ns, agc, vad]
+-
+-train:
+-  batch_size: 16
+-  grad_accum: 1
+-  epochs: 40
+-  lr: 0.0001
+-  weight_decay: 0.0001
+-  max_grad_norm: 5.0
+-  early_stop_patience: 12
+-  eval_every: 5
+-  num_workers: 8
+-  fp16: true
+-  amp_dtype: bf16
+-  seed: 0
+-  view_schedule: random_stage
+-  stage_probs: [0.0, 0.25, 0.25, 0.25, 0.25]
+-
+-wcl:
+-  loss_mode: wcl
+-  lambda_mode: abs
+-  lambda: 0.3
+-  alpha: 0.3
+-  eps_init: 0.5
+-  eps_final: 0.1
+-  sinkhorn_iters: 20
+-  cost_mode: product            # 显式钉住：v4 的默认值已改为 product
+-  cost_normalize: mean           # cost/mean(cost): keeps mean_cost/eps in [2,10]
+-  use_temporal: true
+-  use_frequency: true
+-
+-model:
+-  arch: xlsr_aasist
+-  # backend = transport measures computed on the AASIST frame output
+-  # (trainable, and the tensor the classifier pools over).
+-  # frontend = the frozen XLS-R states -> ZERO gradient (run 1 bug).
+-  measure_from: backend
+-  n_subbands: 8                 # hidden=128 -> 8 x 16 channels per band
+-  frontend:
+-    model_name: /root/wcl_work/models/xlsr300m
+-    freeze: true
+-    layer_idx: -1
+-  backend:
+-    hidden: 128
+-    n_layers: 4
+-    n_heads: 4
+-    dropout: 0.1
+-
+-eval:
+-  phases: [clean, aec, ns, agc, vad]
+-  batch_size: 16
+-  num_workers: 8
+-
+-out_dir: outputs/la
++# ============================================================
++# ASVspoof2019 LA 正式跑（一天预算内的受控三档对比）
++# 骨干：XLS-R 300M（冻结）+ AASIST 后端，与对比文献同架构
++# ============================================================
++data:
++  root: data/asvspoof2019_la
++  cache_dir: cache/la_v3
++  sr: 16000
++
++feature:
++  type: raw
++  duration: 4.0
++
++afe:
++  randomize: true               # now actually implemented: every stage
++  jitter: 0.4                   # is jittered +-40% per utterance
++  seed: 0
++  stages: [aec, ns, agc, vad]
++
++train:
++  batch_size: 16
++  grad_accum: 1
++  epochs: 40
++  lr: 0.0001
++  weight_decay: 0.0001
++  max_grad_norm: 5.0
++  early_stop_patience: 12
++  eval_every: 5
++  num_workers: 8
++  fp16: true
++  amp_dtype: bf16
++  seed: 0
++  view_schedule: random_stage
++  stage_probs: [0.0, 0.25, 0.25, 0.25, 0.25]
++
++wcl:
++  loss_mode: wcl
++  lambda_mode: abs
++  lambda: 0.3
++  alpha: 0.3
++  eps_init: 0.5
++  eps_final: 0.1
++  sinkhorn_iters: 20
++  cost_mode: product            # 显式钉住：v4 的默认值已改为 product
++  cost_normalize: mean           # cost/mean(cost): keeps mean_cost/eps in [2,10]
++  use_temporal: true
++  use_frequency: true
++
++model:
++  arch: xlsr_aasist
++  # backend = transport measures computed on the AASIST frame output
++  # (trainable, and the tensor the classifier pools over).
++  # frontend = the frozen XLS-R states -> ZERO gradient (run 1 bug).
++  measure_from: backend
++  n_subbands: 8                 # hidden=128 -> 8 x 16 channels per band
++  frontend:
++    model_name: /root/wcl_work/models/xlsr300m
++    freeze: true
++    layer_idx: -1
++  backend:
++    hidden: 128
++    n_layers: 4
++    n_heads: 4
++    dropout: 0.1
++
++eval:
++  phases: [clean, aec, ns, agc, vad]
++  batch_size: 16
++  num_workers: 8
++
++out_dir: outputs/la
+diff --git a/configs/smoke.yaml b/configs/smoke.yaml
+index d736ee7..5008432 100644
+--- a/configs/smoke.yaml
++++ b/configs/smoke.yaml
+@@ -1,67 +1,67 @@
+-# ============================================================
+-# WCL 快速验证配置（smoke test）
+-# 用途：验证数据→特征→训练→评估→推理 全链路可跑通
+-# 在 CPU 或小 GPU 上 2-3 分钟完成
+-# ============================================================
+-
+-data:
+-  root: data/asvspoof2019_la      # ASVspoof2019_LA 解压后目录（见 README）
+-  cache_dir: cache/smoke_v3          # 特征缓存目录（自动创建）
+-  sr: 16000
+-
+-feature:
+-  n_fft: 512
+-  hop: 160
+-  n_mels: 80
+-  max_frames: 320                 # 3.2s 固定帧长（smoke 用短长度）
+-  normalize: meanstd              # meanstd | minmax
+-  random_crop: false
+-
+-afe:
+-  # 纯 Python 简化模拟（方法思路对齐论文，非 WebRTC 精确实现）
+-  # 每阶段参数含义见 wcl/afe.py 文档字符串
+-  randomize: true                 # 训练时参数加随机扰动
+-  seed: 0
+-  stages: [aec, ns, agc, vad]     # 级联顺序
+-
+-train:
+-  batch_size: 16
+-  epochs: 3
+-  lr: 0.0001
+-  weight_decay: 0.0001
+-  max_grad_norm: 5.0
+-  early_stop_patience: 10
+-  eval_every: 1                   # 每 N epoch 评估 dev
+-  num_workers: 2
+-  fp16: false
+-  seed: 0
+-  # 训练时失真视图的采样方式
+-  # random_stage: 每个 batch 随机选一个 AFE 阶段作为失真视图（多样性好）
+-  # full_cascade: 固定用四阶段全管线（对齐论文协议）
+-  view_schedule: random_stage
+-  stage_probs: [0.0, 0.25, 0.25, 0.25, 0.25]   # [clean, aec, ns, agc, vad]
+-
+-wcl:
+-  lambda: 0.3                     # 一致性项权重（Proposition 4：λ 与 ε 只以 λ/ε 组合出现）
+-  eps_init: 0.1                   # 熵正则初始值
+-  eps_final: 0.01                 # 退火终值（随 epoch 线性衰减）
+-  sinkhorn_iters: 20              # Sinkhorn 迭代次数（论文 k=20）
+-  cost_mode: euclidean            # 显式钉住：v4 的默认值已改为 product
+-  cost_normalize: mean           # cost/mean(cost): keeps mean_cost/eps in [2,10]
+-  use_temporal: true              # 时域测度 W_{1,εt}
+-  use_frequency: true             # 频域测度 W_{1,εf}
+-
+-model:
+-  # 轻量 2D-CNN 编码器（保持时频结构到输出层，供 WCL 测度使用）
+-  base_channels: [32, 64, 128, 256]
+-  se_blocks: [true, true, true, true]
+-  dropout: 0.3
+-  embed_dim: 128                  # 分类头隐层
+-
+-eval:
+-  # 阶段前缀评估：clean / aec / aec+ns / aec+ns+agc / 全管线（对齐论文表 1）
+-  phases: [clean, aec, ns, agc, vad]
+-  batch_size: 32
+-  num_workers: 2
+-
+-out_dir: outputs/smoke
++# ============================================================
++# WCL 快速验证配置（smoke test）
++# 用途：验证数据→特征→训练→评估→推理 全链路可跑通
++# 在 CPU 或小 GPU 上 2-3 分钟完成
++# ============================================================
++
++data:
++  root: data/asvspoof2019_la      # ASVspoof2019_LA 解压后目录（见 README）
++  cache_dir: cache/smoke_v3          # 特征缓存目录（自动创建）
++  sr: 16000
++
++feature:
++  n_fft: 512
++  hop: 160
++  n_mels: 80
++  max_frames: 320                 # 3.2s 固定帧长（smoke 用短长度）
++  normalize: meanstd              # meanstd | minmax
++  random_crop: false
++
++afe:
++  # 纯 Python 简化模拟（方法思路对齐论文，非 WebRTC 精确实现）
++  # 每阶段参数含义见 wcl/afe.py 文档字符串
++  randomize: true                 # 训练时参数加随机扰动
++  seed: 0
++  stages: [aec, ns, agc, vad]     # 级联顺序
++
++train:
++  batch_size: 16
++  epochs: 3
++  lr: 0.0001
++  weight_decay: 0.0001
++  max_grad_norm: 5.0
++  early_stop_patience: 10
++  eval_every: 1                   # 每 N epoch 评估 dev
++  num_workers: 2
++  fp16: false
++  seed: 0
++  # 训练时失真视图的采样方式
++  # random_stage: 每个 batch 随机选一个 AFE 阶段作为失真视图（多样性好）
++  # full_cascade: 固定用四阶段全管线（对齐论文协议）
++  view_schedule: random_stage
++  stage_probs: [0.0, 0.25, 0.25, 0.25, 0.25]   # [clean, aec, ns, agc, vad]
++
++wcl:
++  lambda: 0.3                     # 一致性项权重（Proposition 4：λ 与 ε 只以 λ/ε 组合出现）
++  eps_init: 0.1                   # 熵正则初始值
++  eps_final: 0.01                 # 退火终值（随 epoch 线性衰减）
++  sinkhorn_iters: 20              # Sinkhorn 迭代次数（论文 k=20）
++  cost_mode: euclidean            # 显式钉住：v4 的默认值已改为 product
++  cost_normalize: mean           # cost/mean(cost): keeps mean_cost/eps in [2,10]
++  use_temporal: true              # 时域测度 W_{1,εt}
++  use_frequency: true             # 频域测度 W_{1,εf}
++
++model:
++  # 轻量 2D-CNN 编码器（保持时频结构到输出层，供 WCL 测度使用）
++  base_channels: [32, 64, 128, 256]
++  se_blocks: [true, true, true, true]
++  dropout: 0.3
++  embed_dim: 128                  # 分类头隐层
++
++eval:
++  # 阶段前缀评估：clean / aec / aec+ns / aec+ns+agc / 全管线（对齐论文表 1）
++  phases: [clean, aec, ns, agc, vad]
++  batch_size: 32
++  num_workers: 2
++
++out_dir: outputs/smoke
+diff --git a/configs/tfcl_arch.yaml b/configs/tfcl_arch.yaml
+index c588aee..e510155 100644
+--- a/configs/tfcl_arch.yaml
++++ b/configs/tfcl_arch.yaml
+@@ -1,78 +1,78 @@
+-# ============================================================
+-# TFCL 同架构配置：XLS-R (300M) 前端 + AASIST 后端
+-# 目的：与 TFCL (Xue et al., ACM MM '26) 的 "Ours" 行做同架构对比，
+-#       使差异只剩一致性损失本身（TFCL: cosine + CKA；WCL: entropic Wasserstein）。
+-# ============================================================
+-
+-data:
+-  root: data/asvspoof2019_la
+-  cache_dir: cache/tfcl_arch_v3
+-  sr: 16000
+-
+-feature:
+-  type: raw                      # XLS-R 的输入是波形，不是 log-mel
+-  duration: 4.0                  # 4s @16k = 64000 samples（AASIST/TFCL 同量级）
+-
+-afe:
+-  randomize: true               # now actually implemented: every stage
+-  jitter: 0.4                   # is jittered +-40% per utterance
+-  seed: 0
+-  stages: [aec, ns, agc, vad]
+-  vad:
+-    mode: zero                   # 固定为"原位置零"版 VAD：本配置对应第一次 GPU 跑（ep31 best 0.57%，eval avg 2.56%），必须可复现
+-    quantile: 0.25
+-    pad: 3
+-
+-train:
+-  batch_size: 8                  # 24GB 卡建议 8~16；显存不足就减小并增大 grad_accum
+-  grad_accum: 4                  # 等效 batch = 32
+-  epochs: 100
+-  lr: 0.0001                     # 对齐 TFCL: Adam, lr 1e-4
+-  weight_decay: 0.0001           # 对齐 TFCL
+-  max_grad_norm: 5.0
+-  early_stop_patience: 10        # 对齐 TFCL
+-  eval_every: 1
+-  num_workers: 4
+-  fp16: true
+-  amp_dtype: bf16                # XLS-R 在 fp16 下易溢出，优先 bf16（4090/A100 均支持）
+-  seed: 0
+-  view_schedule: random_stage
+-  stage_probs: [0.0, 0.25, 0.25, 0.25, 0.25]
+-
+-wcl:
+-  # lambda_mode: abs   -> 直接用 lambda（与 TFCL 相同的绝对权重口径）
+-  # lambda_mode: ratio -> lam_eff = alpha * CE_ref / W_ref（无量纲，跨骨干可迁移）
+-  lambda_mode: ratio
+-  lambda: 0.3                    # 仅 abs 模式生效；ratio 模式下作为参考值
+-  alpha: 0.3                     # 一致性项初始占分类损失的比例（无量纲）
+-  eps_init: 0.5
+-  eps_final: 0.1
+-  sinkhorn_iters: 20
+-  cost_mode: product            # 显式钉住：v4 的默认值已改为 product
+-  cost_normalize: mean           # cost/mean(cost): keeps mean_cost/eps in [2,10]
+-  use_temporal: true
+-  use_frequency: true
+-
+-model:
+-  arch: xlsr_aasist
+-  # backend = transport measures computed on the AASIST frame output
+-  # (trainable, and the tensor the classifier pools over).
+-  # frontend = the frozen XLS-R states -> ZERO gradient (run 1 bug).
+-  measure_from: backend
+-  n_subbands: 8                 # hidden=128 -> 8 bands x 16 channels
+-  frontend:
+-    model_name: facebook/wav2vec2-xls-r-300m
+-    freeze: true                 # 冻结前端：单卡显存/优化器状态可控；如需微调设 false
+-    layer_idx: -1
+-  backend:
+-    hidden: 128
+-    n_layers: 4
+-    n_heads: 4
+-    dropout: 0.1
+-
+-eval:
+-  phases: [clean, aec, ns, agc, vad]
+-  batch_size: 8
+-  num_workers: 4
+-
+-out_dir: outputs/tfcl_arch
++# ============================================================
++# TFCL 同架构配置：XLS-R (300M) 前端 + AASIST 后端
++# 目的：与 TFCL (Xue et al., ACM MM '26) 的 "Ours" 行做同架构对比，
++#       使差异只剩一致性损失本身（TFCL: cosine + CKA；WCL: entropic Wasserstein）。
++# ============================================================
++
++data:
++  root: data/asvspoof2019_la
++  cache_dir: cache/tfcl_arch_v3
++  sr: 16000
++
++feature:
++  type: raw                      # XLS-R 的输入是波形，不是 log-mel
++  duration: 4.0                  # 4s @16k = 64000 samples（AASIST/TFCL 同量级）
++
++afe:
++  randomize: true               # now actually implemented: every stage
++  jitter: 0.4                   # is jittered +-40% per utterance
++  seed: 0
++  stages: [aec, ns, agc, vad]
++  vad:
++    mode: zero                   # 固定为"原位置零"版 VAD：本配置对应第一次 GPU 跑（ep31 best 0.57%，eval avg 2.56%），必须可复现
++    quantile: 0.25
++    pad: 3
++
++train:
++  batch_size: 8                  # 24GB 卡建议 8~16；显存不足就减小并增大 grad_accum
++  grad_accum: 4                  # 等效 batch = 32
++  epochs: 100
++  lr: 0.0001                     # 对齐 TFCL: Adam, lr 1e-4
++  weight_decay: 0.0001           # 对齐 TFCL
++  max_grad_norm: 5.0
++  early_stop_patience: 10        # 对齐 TFCL
++  eval_every: 1
++  num_workers: 4
++  fp16: true
++  amp_dtype: bf16                # XLS-R 在 fp16 下易溢出，优先 bf16（4090/A100 均支持）
++  seed: 0
++  view_schedule: random_stage
++  stage_probs: [0.0, 0.25, 0.25, 0.25, 0.25]
++
++wcl:
++  # lambda_mode: abs   -> 直接用 lambda（与 TFCL 相同的绝对权重口径）
++  # lambda_mode: ratio -> lam_eff = alpha * CE_ref / W_ref（无量纲，跨骨干可迁移）
++  lambda_mode: ratio
++  lambda: 0.3                    # 仅 abs 模式生效；ratio 模式下作为参考值
++  alpha: 0.3                     # 一致性项初始占分类损失的比例（无量纲）
++  eps_init: 0.5
++  eps_final: 0.1
++  sinkhorn_iters: 20
++  cost_mode: product            # 显式钉住：v4 的默认值已改为 product
++  cost_normalize: mean           # cost/mean(cost): keeps mean_cost/eps in [2,10]
++  use_temporal: true
++  use_frequency: true
++
++model:
++  arch: xlsr_aasist
++  # backend = transport measures computed on the AASIST frame output
++  # (trainable, and the tensor the classifier pools over).
++  # frontend = the frozen XLS-R states -> ZERO gradient (run 1 bug).
++  measure_from: backend
++  n_subbands: 8                 # hidden=128 -> 8 bands x 16 channels
++  frontend:
++    model_name: facebook/wav2vec2-xls-r-300m
++    freeze: true                 # 冻结前端：单卡显存/优化器状态可控；如需微调设 false
++    layer_idx: -1
++  backend:
++    hidden: 128
++    n_layers: 4
++    n_heads: 4
++    dropout: 0.1
++
++eval:
++  phases: [clean, aec, ns, agc, vad]
++  batch_size: 8
++  num_workers: 4
++
++out_dir: outputs/tfcl_arch
+diff --git a/configs/tfcl_arch_smoke.yaml b/configs/tfcl_arch_smoke.yaml
+index 11003ba..98790cb 100644
+--- a/configs/tfcl_arch_smoke.yaml
++++ b/configs/tfcl_arch_smoke.yaml
+@@ -1,71 +1,71 @@
+-# ============================================================
+-# TFCL 同架构冒烟配置：先用少量数据 + 3 epoch 验证链路/显存
+-# 用法：拿到 GPU 后先跑这个，确认显存占用和每 epoch 时长
+-# ============================================================
+-
+-data:
+-  root: data/asvspoof2019_la
+-  cache_dir: cache/tfcl_arch_smoke_v3
+-  sr: 16000
+-
+-feature:
+-  type: raw
+-  duration: 4.0
+-
+-afe:
+-  randomize: true               # now actually implemented: every stage
+-  jitter: 0.4                   # is jittered +-40% per utterance
+-  seed: 0
+-  stages: [aec, ns, agc, vad]
+-
+-train:
+-  batch_size: 2                  # 冒烟刻意压小，测显存基线
+-  grad_accum: 1
+-  epochs: 3
+-  lr: 0.0001
+-  weight_decay: 0.0001
+-  max_grad_norm: 5.0
+-  early_stop_patience: 10
+-  eval_every: 1
+-  num_workers: 2
+-  fp16: true
+-  amp_dtype: bf16
+-  seed: 0
+-  view_schedule: random_stage
+-  stage_probs: [0.0, 0.25, 0.25, 0.25, 0.25]
+-
+-wcl:
+-  lambda_mode: ratio             # 无量纲口径；abs 则直接用 lambda
+-  lambda: 0.3
+-  alpha: 0.3
+-  eps_init: 0.5
+-  eps_final: 0.1
+-  sinkhorn_iters: 20
+-  cost_mode: product            # 显式钉住：v4 的默认值已改为 product
+-  cost_normalize: mean           # cost/mean(cost): keeps mean_cost/eps in [2,10]
+-  use_temporal: true
+-  use_frequency: true
+-
+-model:
+-  arch: xlsr_aasist
+-  # backend = transport measures computed on the AASIST frame output
+-  # (trainable, and the tensor the classifier pools over).
+-  # frontend = the frozen XLS-R states -> ZERO gradient (run 1 bug).
+-  measure_from: backend
+-  n_subbands: 8                 # hidden=128 -> 8 x 16 channels per band
+-  frontend:
+-    model_name: facebook/wav2vec2-xls-r-300m
+-    freeze: true
+-    layer_idx: -1
+-  backend:
+-    hidden: 128
+-    n_layers: 4
+-    n_heads: 4
+-    dropout: 0.1
+-
+-eval:
+-  phases: [clean, aec, ns, agc, vad]
+-  batch_size: 2
+-  num_workers: 2
+-
+-out_dir: outputs/tfcl_arch_smoke
++# ============================================================
++# TFCL 同架构冒烟配置：先用少量数据 + 3 epoch 验证链路/显存
++# 用法：拿到 GPU 后先跑这个，确认显存占用和每 epoch 时长
++# ============================================================
++
++data:
++  root: data/asvspoof2019_la
++  cache_dir: cache/tfcl_arch_smoke_v3
++  sr: 16000
++
++feature:
++  type: raw
++  duration: 4.0
++
++afe:
++  randomize: true               # now actually implemented: every stage
++  jitter: 0.4                   # is jittered +-40% per utterance
++  seed: 0
++  stages: [aec, ns, agc, vad]
++
++train:
++  batch_size: 2                  # 冒烟刻意压小，测显存基线
++  grad_accum: 1
++  epochs: 3
++  lr: 0.0001
++  weight_decay: 0.0001
++  max_grad_norm: 5.0
++  early_stop_patience: 10
++  eval_every: 1
++  num_workers: 2
++  fp16: true
++  amp_dtype: bf16
++  seed: 0
++  view_schedule: random_stage
++  stage_probs: [0.0, 0.25, 0.25, 0.25, 0.25]
++
++wcl:
++  lambda_mode: ratio             # 无量纲口径；abs 则直接用 lambda
++  lambda: 0.3
++  alpha: 0.3
++  eps_init: 0.5
++  eps_final: 0.1
++  sinkhorn_iters: 20
++  cost_mode: product            # 显式钉住：v4 的默认值已改为 product
++  cost_normalize: mean           # cost/mean(cost): keeps mean_cost/eps in [2,10]
++  use_temporal: true
++  use_frequency: true
++
++model:
++  arch: xlsr_aasist
++  # backend = transport measures computed on the AASIST frame output
++  # (trainable, and the tensor the classifier pools over).
++  # frontend = the frozen XLS-R states -> ZERO gradient (run 1 bug).
++  measure_from: backend
++  n_subbands: 8                 # hidden=128 -> 8 x 16 channels per band
++  frontend:
++    model_name: facebook/wav2vec2-xls-r-300m
++    freeze: true
++    layer_idx: -1
++  backend:
++    hidden: 128
++    n_layers: 4
++    n_heads: 4
++    dropout: 0.1
++
++eval:
++  phases: [clean, aec, ns, agc, vad]
++  batch_size: 2
++  num_workers: 2
++
++out_dir: outputs/tfcl_arch_smoke
+diff --git a/configs/three_arm_smoke.yaml b/configs/three_arm_smoke.yaml
+index a4843f6..8a48541 100644
+--- a/configs/three_arm_smoke.yaml
++++ b/configs/three_arm_smoke.yaml
+@@ -1,95 +1,95 @@
+-# 微型验证配置（三臂 v2，CPU 可跑）
+-# 用途：在没有 GPU、不下载 300M 权重时，验证
+-#   1) 真截断 VAD 生效且不炸；
+-#   2) physical 代价矩阵（含 λ|i−j|）能前向/反向；
+-#   3) ce / tfcl / wcl 三臂都能在同一管线上跑完并出 eval json。
+-# 不可用于正式实验（前端是随机初始化的微型 XLS-R）。
+-data:
+-  root: data/synth_asvspoof
+-  cache_dir: cache/phys_smoke_v4
+-  sr: 16000
+-
+-feature:
+-  type: raw
+-  duration: 2.0                  # 微型骨干在 4 s 上会给出 1280 帧，CPU 上太慢
+-
+-afe:
+-  randomize: true               # now actually implemented: every stage
+-  jitter: 0.4                   # is jittered +-40% per utterance
+-  seed: 0
+-  stages: [aec, ns, agc, vad]
+-  vad:
+-    mode: truncate
+-    truncate_mode: span
+-    quantile: 0.25
+-    pad: 3
+-    min_keep_s: 0.25
+-    extra_trim_s: 0.08
+-    extra_trim_jitter_s: 0.12
+-
+-train:
+-  batch_size: 2
+-  grad_accum: 1
+-  epochs: 2
+-  lr: 0.0001
+-  weight_decay: 0.0001
+-  max_grad_norm: 5.0
+-  early_stop_patience: 10
+-  eval_every: 1
+-  num_workers: 0
+-  fp16: false
+-  seed: 0
+-  view_schedule: random_stage
+-  stage_probs: [0.0, 0.25, 0.25, 0.25, 0.25]
+-
+-wcl:
+-  lambda_mode: ratio
+-  lambda: 0.3
+-  alpha: 0.3
+-  eps_init: 0.5
+-  eps_final: 0.1
+-  sinkhorn_iters: 10
+-  cost_mode: product             # 乘积空间单次传输（v4 主口径）
+-  geo_mode: calibrate
+-  beta_t: 1.0
+-  beta_f: 1.0
+-  lambda_t: 1.0
+-  lambda_f: 0.5
+-  grid_stride: 8                 # 微型骨干 T=640，8 帧平均后 80 个时间格
+-  cost_normalize: mean
+-  use_temporal: true
+-  use_frequency: true
+-
+-model:
+-  arch: xlsr_aasist
+-  # backend = transport measures computed on the AASIST frame output
+-  # (trainable, and the tensor the classifier pools over).
+-  # frontend = the frozen XLS-R states -> ZERO gradient (run 1 bug).
+-  measure_from: backend
+-  n_subbands: 4                 # hidden=32 -> 4 bands x 8 channels
+-  frontend:
+-    pretrained: false
+-    freeze: true
+-    config_overrides:
+-      hidden_size: 64
+-      num_hidden_layers: 2
+-      num_attention_heads: 2
+-      intermediate_size: 128
+-      conv_dim: [32, 32]
+-      conv_stride: [10, 5]
+-      conv_kernel: [10, 3]
+-      num_conv_pos_embeddings: 16
+-      num_conv_pos_embedding_groups: 2
+-      feat_extract_norm: layer
+-  backend:
+-    hidden: 32
+-    n_layers: 2
+-    n_heads: 2
+-    dropout: 0.1
+-
+-eval:
+-  phases: [clean, aec, ns, agc, vad]
+-  batch_size: 2
+-  num_workers: 0
+-
+-out_dir: outputs/phys_smoke
++# 微型验证配置（三臂 v2，CPU 可跑）
++# 用途：在没有 GPU、不下载 300M 权重时，验证
++#   1) 真截断 VAD 生效且不炸；
++#   2) physical 代价矩阵（含 λ|i−j|）能前向/反向；
++#   3) ce / tfcl / wcl 三臂都能在同一管线上跑完并出 eval json。
++# 不可用于正式实验（前端是随机初始化的微型 XLS-R）。
++data:
++  root: data/synth_asvspoof
++  cache_dir: cache/phys_smoke_v4
++  sr: 16000
++
++feature:
++  type: raw
++  duration: 2.0                  # 微型骨干在 4 s 上会给出 1280 帧，CPU 上太慢
++
++afe:
++  randomize: true               # now actually implemented: every stage
++  jitter: 0.4                   # is jittered +-40% per utterance
++  seed: 0
++  stages: [aec, ns, agc, vad]
++  vad:
++    mode: truncate
++    truncate_mode: span
++    quantile: 0.25
++    pad: 3
++    min_keep_s: 0.25
++    extra_trim_s: 0.08
++    extra_trim_jitter_s: 0.12
++
++train:
++  batch_size: 2
++  grad_accum: 1
++  epochs: 2
++  lr: 0.0001
++  weight_decay: 0.0001
++  max_grad_norm: 5.0
++  early_stop_patience: 10
++  eval_every: 1
++  num_workers: 0
++  fp16: false
++  seed: 0
++  view_schedule: random_stage
++  stage_probs: [0.0, 0.25, 0.25, 0.25, 0.25]
++
++wcl:
++  lambda_mode: ratio
++  lambda: 0.3
++  alpha: 0.3
++  eps_init: 0.5
++  eps_final: 0.1
++  sinkhorn_iters: 10
++  cost_mode: product             # 乘积空间单次传输（v4 主口径）
++  geo_mode: calibrate
++  beta_t: 1.0
++  beta_f: 1.0
++  lambda_t: 1.0
++  lambda_f: 0.5
++  grid_stride: 8                 # 微型骨干 T=640，8 帧平均后 80 个时间格
++  cost_normalize: mean
++  use_temporal: true
++  use_frequency: true
++
++model:
++  arch: xlsr_aasist
++  # backend = transport measures computed on the AASIST frame output
++  # (trainable, and the tensor the classifier pools over).
++  # frontend = the frozen XLS-R states -> ZERO gradient (run 1 bug).
++  measure_from: backend
++  n_subbands: 4                 # hidden=32 -> 4 bands x 8 channels
++  frontend:
++    pretrained: false
++    freeze: true
++    config_overrides:
++      hidden_size: 64
++      num_hidden_layers: 2
++      num_attention_heads: 2
++      intermediate_size: 128
++      conv_dim: [32, 32]
++      conv_stride: [10, 5]
++      conv_kernel: [10, 3]
++      num_conv_pos_embeddings: 16
++      num_conv_pos_embedding_groups: 2
++      feat_extract_norm: layer
++  backend:
++    hidden: 32
++    n_layers: 2
++    n_heads: 2
++    dropout: 0.1
++
++eval:
++  phases: [clean, aec, ns, agc, vad]
++  batch_size: 2
++  num_workers: 0
++
++out_dir: outputs/phys_smoke
+diff --git a/configs/train_full.yaml b/configs/train_full.yaml
+index b94bb23..e1e65c7 100644
+--- a/configs/train_full.yaml
++++ b/configs/train_full.yaml
+@@ -1,61 +1,61 @@
+-# [legacy] 首跑口径，已由 configs/three_arm_phys.yaml（v4）取代；
+-# 保留用于复现 run 1，不要用它出表。
+-# ============================================================
+-# WCL 全量训练配置（对齐论文 5.4 节 Proposed training protocol）
+-# ASVspoof 2019 LA 全部训练集 + 100 epochs + RTX 4090
+-# ============================================================
+-
+-data:
+-  root: data/asvspoof2019_la
+-  cache_dir: cache/full_v3
+-  sr: 16000
+-
+-feature:
+-  n_fft: 512
+-  hop: 160
+-  n_mels: 80
+-  max_frames: 640                 # 6.4s 固定帧长（AASIST 同量级，覆盖绝大多数 LA 音频）
+-  normalize: meanstd
+-  random_crop: true               # 训练时随机裁剪子段增强
+-
+-afe:
+-  randomize: true
+-  seed: 0
+-  stages: [aec, ns, agc, vad]
+-
+-train:
+-  batch_size: 32
+-  epochs: 100
+-  lr: 0.0001
+-  weight_decay: 0.0001
+-  max_grad_norm: 5.0
+-  early_stop_patience: 10
+-  eval_every: 1
+-  num_workers: 4
+-  fp16: true
+-  seed: 0
+-  view_schedule: random_stage
+-  stage_probs: [0.0, 0.25, 0.25, 0.25, 0.25]
+-
+-wcl:
+-  lambda: 0.3
+-  eps_init: 0.1
+-  eps_final: 0.01
+-  sinkhorn_iters: 20
+-  cost_mode: euclidean            # 显式钉住：v4 的默认值已改为 product
+-  cost_normalize: mean           # cost/mean(cost): keeps mean_cost/eps in [2,10]
+-  use_temporal: true
+-  use_frequency: true
+-
+-model:
+-  base_channels: [32, 64, 128, 256]
+-  se_blocks: [true, true, true, true]
+-  dropout: 0.3
+-  embed_dim: 128
+-
+-eval:
+-  phases: [clean, aec, ns, agc, vad]
+-  batch_size: 32
+-  num_workers: 4
+-
+-out_dir: outputs/full
++# [legacy] 首跑口径，已由 configs/three_arm_phys.yaml（v4）取代；
++# 保留用于复现 run 1，不要用它出表。
++# ============================================================
++# WCL 全量训练配置（对齐论文 5.4 节 Proposed training protocol）
++# ASVspoof 2019 LA 全部训练集 + 100 epochs + RTX 4090
++# ============================================================
++
++data:
++  root: data/asvspoof2019_la
++  cache_dir: cache/full_v3
++  sr: 16000
++
++feature:
++  n_fft: 512
++  hop: 160
++  n_mels: 80
++  max_frames: 640                 # 6.4s 固定帧长（AASIST 同量级，覆盖绝大多数 LA 音频）
++  normalize: meanstd
++  random_crop: true               # 训练时随机裁剪子段增强
++
++afe:
++  randomize: true
++  seed: 0
++  stages: [aec, ns, agc, vad]
++
++train:
++  batch_size: 32
++  epochs: 100
++  lr: 0.0001
++  weight_decay: 0.0001
++  max_grad_norm: 5.0
++  early_stop_patience: 10
++  eval_every: 1
++  num_workers: 4
++  fp16: true
++  seed: 0
++  view_schedule: random_stage
++  stage_probs: [0.0, 0.25, 0.25, 0.25, 0.25]
++
++wcl:
++  lambda: 0.3
++  eps_init: 0.1
++  eps_final: 0.01
++  sinkhorn_iters: 20
++  cost_mode: euclidean            # 显式钉住：v4 的默认值已改为 product
++  cost_normalize: mean           # cost/mean(cost): keeps mean_cost/eps in [2,10]
++  use_temporal: true
++  use_frequency: true
++
++model:
++  base_channels: [32, 64, 128, 256]
++  se_blocks: [true, true, true, true]
++  dropout: 0.3
++  embed_dim: 128
++
++eval:
++  phases: [clean, aec, ns, agc, vad]
++  batch_size: 32
++  num_workers: 4
++
++out_dir: outputs/full
+diff --git a/scripts/collect_campaign.py b/scripts/collect_campaign.py
+index 5835090..7928dd6 100644
+--- a/scripts/collect_campaign.py
++++ b/scripts/collect_campaign.py
+@@ -1,162 +1,162 @@
+-#!/usr/bin/env python3
+-"""Collect a whole campaign into the tables the paper needs.
+-
+-For every run directory ``<root>/<name>`` it reads
+-
+-    history.json        dev curve (best epoch / best average EER)
+-    eval_eval.json      five-stage results on the in-family distortion draw
+-    eval_eval_holdout.json   same checkpoint on an *unseen* draw (optional)
+-
+-and prints three Markdown tables:
+-
+-  1. per-run           every number, one row per training run
+-  2. grouped           mean over seeds, with the spread, one row per method
+-  3. main comparison   the five-stage EER table (+ the VAD marginal, which is
+-                       the quantity the WCL claim is judged on)
+-
+-Usage:
+-    python scripts/collect_campaign.py --root outputs/camp_v4
+-    python scripts/collect_campaign.py --root outputs/camp_v4 --csv out.csv
+-"""
+-from __future__ import annotations
+-
+-import argparse
+-import csv
+-import json
+-import re
+-from collections import defaultdict
+-from pathlib import Path
+-
+-PHASES = ["clean", "aec", "ns", "agc", "vad"]
+-
+-
+-def load(path: Path):
+-    if not path.exists():
+-        return None
+-    try:
+-        return json.loads(path.read_text(encoding="utf-8"))
+-    except Exception:
+-        return None
+-
+-
+-def best_dev(hist) -> tuple[float, int]:
+-    if not hist:
+-        return float("nan"), -1
+-    best, ep = float("inf"), -1
+-    for rec in hist:
+-        eer = rec.get("avg_eer")
+-        if eer is None:
+-            continue
+-        if eer < best:
+-            best, ep = float(eer), int(rec.get("epoch", -1))
+-    return best, ep
+-
+-
+-def base_name(name: str) -> str:
+-    return re.sub(r"__s\d+$", "", name)
+-
+-
+-def main() -> int:
+-    ap = argparse.ArgumentParser()
+-    ap.add_argument("--root", default="outputs/camp_v4")
+-    ap.add_argument("--csv", default=None)
+-    args = ap.parse_args()
+-
+-    root = Path(args.root)
+-    if not root.exists():
+-        print(f"[collect] {root} does not exist yet")
+-        return 1
+-
+-    rows = []
+-    for run in sorted(p for p in root.iterdir() if p.is_dir()):
+-        summ = load(run / "eval_eval.json")
+-        dev = load(run / "dev.json")
+-        hist = load(run / "history.json")
+-        dev_best, dev_ep = best_dev(hist)
+-        row = {"run": run.name, "group": base_name(run.name),
+-               "dev_best": dev_best, "dev_ep": dev_ep,
+-               "done": bool(summ)}
+-        if summ:
+-            ph = summ.get("phases", {})
+-            for p in PHASES:
+-                row[p] = ph.get(p, {}).get("eer", float("nan"))
+-            row["avg"] = summ.get("avg_eer", float("nan"))
+-            row["lambda_eff"] = summ.get("lambda_eff")
+-            row["lambda_t"] = summ.get("lambda_t")
+-        hold = load(run / "eval_eval_holdout.json")
+-        if hold:
+-            row["hold_avg"] = hold.get("avg_eer", float("nan"))
+-            row["hold_vad"] = hold.get("phases", {}).get("vad", {}).get("eer")
+-        rows.append(row)
+-        _ = dev
+-
+-    if not rows:
+-        print(f"[collect] no run directories under {root}")
+-        return 1
+-
+-    def pct(v):
+-        return "—" if v is None or v != v else f"{v * 100:.2f}"
+-
+-    print("\n### 1. per-run\n")
+-    hdr = ("| run | best dev avgEER | ep | clean | AEC | AEC+NS | +AGC | cascade "
+-           "| avg | VAD× | holdout avg | λ_eff |")
+-    print(hdr)
+-    print("|" + "---|" * 12)
+-    for r in rows:
+-        marg = (r["vad"] / r["agc"]) if r.get("agc") else None
+-        print("| {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |".format(
+-            r["run"], pct(r["dev_best"]), r["dev_ep"],
+-            pct(r.get("clean")), pct(r.get("aec")), pct(r.get("ns")),
+-            pct(r.get("agc")), pct(r.get("vad")), pct(r.get("avg")),
+-            "—" if marg is None else f"{marg:.2f}",
+-            pct(r.get("hold_avg")),
+-            "—" if r.get("lambda_eff") is None else f"{r['lambda_eff']:.3f}"))
+-
+-    print("\n### 2. grouped over seeds\n")
+-    groups = defaultdict(list)
+-    for r in rows:
+-        if r["done"]:
+-            groups[r["group"]].append(r)
+-    print("| method | n | cascade EER (mean) | spread | avg EER | clean | holdout |")
+-    print("|---|---|---|---|---|---|---|")
+-    for g, rs in sorted(groups.items()):
+-        def ok(v):
+-            return v is not None and v == v
+-
+-        vad = [r["vad"] for r in rs if ok(r.get("vad"))]
+-        avg = [r["avg"] for r in rs if ok(r.get("avg"))]
+-        cl = [r["clean"] for r in rs if ok(r.get("clean"))]
+-        hd = [r["hold_avg"] for r in rs if ok(r.get("hold_avg"))]
+-        if not vad:
+-            continue
+-        spread = f"{pct(min(vad))}–{pct(max(vad))}" if len(vad) > 1 else "—"
+-        print("| {} | {} | {} | {} | {} | {} | {} |".format(
+-            g, len(vad), pct(sum(vad) / len(vad)), spread,
+-            pct(sum(avg) / len(avg)) if avg else "—",
+-            pct(sum(cl) / len(cl)) if cl else "—",
+-            pct(sum(hd) / len(hd)) if hd else "—"))
+-
+-    print("\n### 3. main five-stage table (single seed shown; use table 2 for the "
+-          "seed-averaged version)\n")
+-    print("| method | clean | AEC | AEC+NS | AEC+NS+AGC | full cascade | avg |")
+-    print("|---|---|---|---|---|---|---|")
+-    for g, rs in sorted(groups.items()):
+-        r = rs[0]
+-        print("| {} | {} | {} | {} | {} | {} | {} |".format(
+-            g, pct(r.get("clean")), pct(r.get("aec")), pct(r.get("ns")),
+-            pct(r.get("agc")), pct(r.get("vad")), pct(r.get("avg"))))
+-
+-    if args.csv:
+-        keys = ["run", "group", "dev_best", "dev_ep", *PHASES, "avg",
+-                "hold_avg", "lambda_eff", "lambda_t"]
+-        with open(args.csv, "w", newline="", encoding="utf-8") as f:
+-            w = csv.DictWriter(f, fieldnames=keys, extrasaction="ignore")
+-            w.writeheader()
+-            for r in rows:
+-                w.writerow(r)
+-        print(f"\n[csv] {args.csv}")
+-    return 0
+-
+-
+-if __name__ == "__main__":
+-    raise SystemExit(main())
++#!/usr/bin/env python3
++"""Collect a whole campaign into the tables the paper needs.
++
++For every run directory ``<root>/<name>`` it reads
++
++    history.json        dev curve (best epoch / best average EER)
++    eval_eval.json      five-stage results on the in-family distortion draw
++    eval_eval_holdout.json   same checkpoint on an *unseen* draw (optional)
++
++and prints three Markdown tables:
++
++  1. per-run           every number, one row per training run
++  2. grouped           mean over seeds, with the spread, one row per method
++  3. main comparison   the five-stage EER table (+ the VAD marginal, which is
++                       the quantity the WCL claim is judged on)
++
++Usage:
++    python scripts/collect_campaign.py --root outputs/camp_v4
++    python scripts/collect_campaign.py --root outputs/camp_v4 --csv out.csv
++"""
++from __future__ import annotations
++
++import argparse
++import csv
++import json
++import re
++from collections import defaultdict
++from pathlib import Path
++
++PHASES = ["clean", "aec", "ns", "agc", "vad"]
++
++
++def load(path: Path):
++    if not path.exists():
++        return None
++    try:
++        return json.loads(path.read_text(encoding="utf-8"))
++    except Exception:
++        return None
++
++
++def best_dev(hist) -> tuple[float, int]:
++    if not hist:
++        return float("nan"), -1
++    best, ep = float("inf"), -1
++    for rec in hist:
++        eer = rec.get("avg_eer")
++        if eer is None:
++            continue
++        if eer < best:
++            best, ep = float(eer), int(rec.get("epoch", -1))
++    return best, ep
++
++
++def base_name(name: str) -> str:
++    return re.sub(r"__s\d+$", "", name)
++
++
++def main() -> int:
++    ap = argparse.ArgumentParser()
++    ap.add_argument("--root", default="outputs/camp_v4")
++    ap.add_argument("--csv", default=None)
++    args = ap.parse_args()
++
++    root = Path(args.root)
++    if not root.exists():
++        print(f"[collect] {root} does not exist yet")
++        return 1
++
++    rows = []
++    for run in sorted(p for p in root.iterdir() if p.is_dir()):
++        summ = load(run / "eval_eval.json")
++        dev = load(run / "dev.json")
++        hist = load(run / "history.json")
++        dev_best, dev_ep = best_dev(hist)
++        row = {"run": run.name, "group": base_name(run.name),
++               "dev_best": dev_best, "dev_ep": dev_ep,
++               "done": bool(summ)}
++        if summ:
++            ph = summ.get("phases", {})
++            for p in PHASES:
++                row[p] = ph.get(p, {}).get("eer", float("nan"))
++            row["avg"] = summ.get("avg_eer", float("nan"))
++            row["lambda_eff"] = summ.get("lambda_eff")
++            row["lambda_t"] = summ.get("lambda_t")
++        hold = load(run / "eval_eval_holdout.json")
++        if hold:
++            row["hold_avg"] = hold.get("avg_eer", float("nan"))
++            row["hold_vad"] = hold.get("phases", {}).get("vad", {}).get("eer")
++        rows.append(row)
++        _ = dev
++
++    if not rows:
++        print(f"[collect] no run directories under {root}")
++        return 1
++
++    def pct(v):
++        return "—" if v is None or v != v else f"{v * 100:.2f}"
++
++    print("\n### 1. per-run\n")
++    hdr = ("| run | best dev avgEER | ep | clean | AEC | AEC+NS | +AGC | cascade "
++           "| avg | VAD× | holdout avg | λ_eff |")
++    print(hdr)
++    print("|" + "---|" * 12)
++    for r in rows:
++        marg = (r["vad"] / r["agc"]) if r.get("agc") else None
++        print("| {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |".format(
++            r["run"], pct(r["dev_best"]), r["dev_ep"],
++            pct(r.get("clean")), pct(r.get("aec")), pct(r.get("ns")),
++            pct(r.get("agc")), pct(r.get("vad")), pct(r.get("avg")),
++            "—" if marg is None else f"{marg:.2f}",
++            pct(r.get("hold_avg")),
++            "—" if r.get("lambda_eff") is None else f"{r['lambda_eff']:.3f}"))
++
++    print("\n### 2. grouped over seeds\n")
++    groups = defaultdict(list)
++    for r in rows:
++        if r["done"]:
++            groups[r["group"]].append(r)
++    print("| method | n | cascade EER (mean) | spread | avg EER | clean | holdout |")
++    print("|---|---|---|---|---|---|---|")
++    for g, rs in sorted(groups.items()):
++        def ok(v):
++            return v is not None and v == v
++
++        vad = [r["vad"] for r in rs if ok(r.get("vad"))]
++        avg = [r["avg"] for r in rs if ok(r.get("avg"))]
++        cl = [r["clean"] for r in rs if ok(r.get("clean"))]
++        hd = [r["hold_avg"] for r in rs if ok(r.get("hold_avg"))]
++        if not vad:
++            continue
++        spread = f"{pct(min(vad))}–{pct(max(vad))}" if len(vad) > 1 else "—"
++        print("| {} | {} | {} | {} | {} | {} | {} |".format(
++            g, len(vad), pct(sum(vad) / len(vad)), spread,
++            pct(sum(avg) / len(avg)) if avg else "—",
++            pct(sum(cl) / len(cl)) if cl else "—",
++            pct(sum(hd) / len(hd)) if hd else "—"))
++
++    print("\n### 3. main five-stage table (single seed shown; use table 2 for the "
++          "seed-averaged version)\n")
++    print("| method | clean | AEC | AEC+NS | AEC+NS+AGC | full cascade | avg |")
++    print("|---|---|---|---|---|---|---|")
++    for g, rs in sorted(groups.items()):
++        r = rs[0]
++        print("| {} | {} | {} | {} | {} | {} | {} |".format(
++            g, pct(r.get("clean")), pct(r.get("aec")), pct(r.get("ns")),
++            pct(r.get("agc")), pct(r.get("vad")), pct(r.get("avg"))))
++
++    if args.csv:
++        keys = ["run", "group", "dev_best", "dev_ep", *PHASES, "avg",
++                "hold_avg", "lambda_eff", "lambda_t"]
++        with open(args.csv, "w", newline="", encoding="utf-8") as f:
++            w = csv.DictWriter(f, fieldnames=keys, extrasaction="ignore")
++            w.writeheader()
++            for r in rows:
++                w.writerow(r)
++        print(f"\n[csv] {args.csv}")
++    return 0
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/scripts/evaluate.py b/scripts/evaluate.py
+index da4c35c..397dc3d 100644
+--- a/scripts/evaluate.py
++++ b/scripts/evaluate.py
+@@ -1,122 +1,122 @@
+-#!/usr/bin/env python3
+-"""Stage-wise evaluation of a trained WCL model.
+-
+-Reports EER/AUC per AFE phase prefix (clean / AEC / AEC+NS / AEC+NS+AGC /
+-full cascade), mirroring the reporting convention of the reference paper
+-(their Table 1).
+-
+-Usage:
+-    python scripts/evaluate.py --config configs/smoke.yaml --ckpt outputs/smoke/default/best.pt
+-    python scripts/evaluate.py --config configs/train_full.yaml --ckpt ... --split eval
+-"""
+-import argparse
+-import json
+-import sys
+-from pathlib import Path
+-
+-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+-
+-import numpy as np
+-import torch
+-from torch.utils.data import DataLoader
+-
+-from wcl.dataset import load_meta, WCLPhaseDataset
+-from wcl.model import build_model
+-from wcl.utils import (load_config, get_device, compute_eer, compute_auc,
+-                       best_threshold, Logger)
+-
+-
+-def main():
+-    ap = argparse.ArgumentParser()
+-    ap.add_argument("--config", required=True)
+-    ap.add_argument("--root", default=None,
+-                    help="override data.root (e.g. synthetic data dir)")
+-    ap.add_argument("--ckpt", required=True)
+-    ap.add_argument("--split", default="dev", choices=["dev", "eval"])
+-    ap.add_argument("--cache-dir", default=None,
+-                    help="override data.cache_dir. Point this at an "
+-                         "--afe-seed != 0 cache to measure generalisation to "
+-                         "unseen members of the distortion family")
+-    ap.add_argument("--phases", nargs="+", default=None,
+-                    help="subset of {clean,aec,ns,agc,vad}; default = config")
+-    ap.add_argument("--limit", type=int, default=None,
+-                    help="only score the first N utterances (sanity check)")
+-    ap.add_argument("--out-suffix", default="",
+-                    help="suffix for the output files, e.g. _holdout, so that an "
+-                         "in-family and an unseen-distortion evaluation of the "
+-                         "same checkpoint do not overwrite each other")
+-    ap.add_argument("--save-scores", action="store_true")
+-    args = ap.parse_args()
+-
+-    cfg = load_config(args.config)
+-    if args.root:
+-        cfg["data"]["root"] = args.root
+-    if args.cache_dir:
+-        cfg["data"]["cache_dir"] = args.cache_dir
+-    ckpt = torch.load(args.ckpt, map_location="cpu")
+-    device = get_device()
+-    model = build_model(cfg).to(device)
+-    model.load_state_dict(ckpt["model"])
+-    model.eval()
+-
+-    cache_dir = Path(cfg["data"]["cache_dir"])
+-    meta = load_meta(cache_dir, args.split)
+-    if args.limit:
+-        meta = meta[: args.limit]
+-    phases = args.phases or cfg["eval"]["phases"]
+-    logger = Logger(None)
+-
+-    print(f"split={args.split}  n={len(meta)}  ckpt={args.ckpt}")
+-    print(f"{'phase':<8} {'EER(%)':>8} {'AUC':>8}   stage")
+-    print("-" * 42)
+-    results, all_scores = {}, {}
+-    with torch.no_grad():
+-        for phase in phases:
+-            ds = WCLPhaseDataset(meta, cache_dir, args.split, phase,
+-                                 feature_type=cfg["feature"].get("type", "logmel"))
+-            loader = DataLoader(ds, batch_size=cfg["eval"].get("batch_size", 32),
+-                                num_workers=cfg["eval"].get("num_workers", 2))
+-            scores, labels = [], []
+-            for x, y in loader:
+-                x = x.to(device)
+-                logits, _ = model(x)
+-                p = torch.softmax(logits, dim=1)[:, 1].cpu().numpy()
+-                scores.append(p)
+-                labels.append(y.numpy())
+-            scores = np.concatenate(scores)
+-            labels = np.concatenate(labels)
+-            eer = compute_eer(scores, labels)
+-            auc = compute_auc(scores, labels)
+-            results[phase] = {"eer": eer, "auc": auc, "n": len(labels)}
+-            all_scores[phase] = {"scores": scores.tolist(),
+-                                 "labels": labels.tolist()}
+-            print(f"{phase:<8} {eer * 100:8.2f} {auc:8.4f}")
+-
+-    avg_eer = sum(v["eer"] for v in results.values()) / len(results)
+-    print(f"{'avg':<8} {avg_eer * 100:8.2f}")
+-    thr = best_threshold(all_scores["vad"]["scores"], all_scores["vad"]["labels"])
+-    print(f"[info] best threshold on '{args.split}/vad' (score>thr => bonafide): {thr:.4f}")
+-
+-    if args.save_scores:
+-        out = Path(args.ckpt).parent / f"scores_{args.split}{args.out_suffix}.npz"
+-        np.savez_compressed(out, **{p: np.array(all_scores[p]["scores"])
+-                                    for p in phases},
+-                            labels=np.array(labels))
+-        print(f"[saved] {out}")
+-
+-    # machine-readable summary, consumed by scripts/collect_arms.py
+-    summary = {"split": args.split, "n": len(meta),
+-               "ckpt": str(args.ckpt), "avg_eer": avg_eer,
+-               "cache_dir": str(cache_dir),
+-               "lambda_t": ckpt.get("lambda_t"), "lambda_f": ckpt.get("lambda_f"),
+-               "lambda_eff": ckpt.get("lambda_eff"),
+-               "phases": {p: {"eer": v["eer"], "auc": v["auc"]}
+-                          for p, v in results.items()}}
+-    jout = Path(args.ckpt).parent / f"eval_{args.split}{args.out_suffix}.json"
+-    with open(jout, "w", encoding="utf-8") as f:
+-        json.dump(summary, f, indent=1)
+-    print(f"[saved] {jout}")
+-
+-
+-if __name__ == "__main__":
+-    main()
++#!/usr/bin/env python3
++"""Stage-wise evaluation of a trained WCL model.
++
++Reports EER/AUC per AFE phase prefix (clean / AEC / AEC+NS / AEC+NS+AGC /
++full cascade), mirroring the reporting convention of the reference paper
++(their Table 1).
++
++Usage:
++    python scripts/evaluate.py --config configs/smoke.yaml --ckpt outputs/smoke/default/best.pt
++    python scripts/evaluate.py --config configs/train_full.yaml --ckpt ... --split eval
++"""
++import argparse
++import json
++import sys
++from pathlib import Path
++
++sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
++
++import numpy as np
++import torch
++from torch.utils.data import DataLoader
++
++from wcl.dataset import load_meta, WCLPhaseDataset
++from wcl.model import build_model
++from wcl.utils import (load_config, get_device, compute_eer, compute_auc,
++                       best_threshold, Logger)
++
++
++def main():
++    ap = argparse.ArgumentParser()
++    ap.add_argument("--config", required=True)
++    ap.add_argument("--root", default=None,
++                    help="override data.root (e.g. synthetic data dir)")
++    ap.add_argument("--ckpt", required=True)
++    ap.add_argument("--split", default="dev", choices=["dev", "eval"])
++    ap.add_argument("--cache-dir", default=None,
++                    help="override data.cache_dir. Point this at an "
++                         "--afe-seed != 0 cache to measure generalisation to "
++                         "unseen members of the distortion family")
++    ap.add_argument("--phases", nargs="+", default=None,
++                    help="subset of {clean,aec,ns,agc,vad}; default = config")
++    ap.add_argument("--limit", type=int, default=None,
++                    help="only score the first N utterances (sanity check)")
++    ap.add_argument("--out-suffix", default="",
++                    help="suffix for the output files, e.g. _holdout, so that an "
++                         "in-family and an unseen-distortion evaluation of the "
++                         "same checkpoint do not overwrite each other")
++    ap.add_argument("--save-scores", action="store_true")
++    args = ap.parse_args()
++
++    cfg = load_config(args.config)
++    if args.root:
++        cfg["data"]["root"] = args.root
++    if args.cache_dir:
++        cfg["data"]["cache_dir"] = args.cache_dir
++    ckpt = torch.load(args.ckpt, map_location="cpu")
++    device = get_device()
++    model = build_model(cfg).to(device)
++    model.load_state_dict(ckpt["model"])
++    model.eval()
++
++    cache_dir = Path(cfg["data"]["cache_dir"])
++    meta = load_meta(cache_dir, args.split)
++    if args.limit:
++        meta = meta[: args.limit]
++    phases = args.phases or cfg["eval"]["phases"]
++    logger = Logger(None)
++
++    print(f"split={args.split}  n={len(meta)}  ckpt={args.ckpt}")
++    print(f"{'phase':<8} {'EER(%)':>8} {'AUC':>8}   stage")
++    print("-" * 42)
++    results, all_scores = {}, {}
++    with torch.no_grad():
++        for phase in phases:
++            ds = WCLPhaseDataset(meta, cache_dir, args.split, phase,
++                                 feature_type=cfg["feature"].get("type", "logmel"))
++            loader = DataLoader(ds, batch_size=cfg["eval"].get("batch_size", 32),
++                                num_workers=cfg["eval"].get("num_workers", 2))
++            scores, labels = [], []
++            for x, y in loader:
++                x = x.to(device)
++                logits, _ = model(x)
++                p = torch.softmax(logits, dim=1)[:, 1].cpu().numpy()
++                scores.append(p)
++                labels.append(y.numpy())
++            scores = np.concatenate(scores)
++            labels = np.concatenate(labels)
++            eer = compute_eer(scores, labels)
++            auc = compute_auc(scores, labels)
++            results[phase] = {"eer": eer, "auc": auc, "n": len(labels)}
++            all_scores[phase] = {"scores": scores.tolist(),
++                                 "labels": labels.tolist()}
++            print(f"{phase:<8} {eer * 100:8.2f} {auc:8.4f}")
++
++    avg_eer = sum(v["eer"] for v in results.values()) / len(results)
++    print(f"{'avg':<8} {avg_eer * 100:8.2f}")
++    thr = best_threshold(all_scores["vad"]["scores"], all_scores["vad"]["labels"])
++    print(f"[info] best threshold on '{args.split}/vad' (score>thr => bonafide): {thr:.4f}")
++
++    if args.save_scores:
++        out = Path(args.ckpt).parent / f"scores_{args.split}{args.out_suffix}.npz"
++        np.savez_compressed(out, **{p: np.array(all_scores[p]["scores"])
++                                    for p in phases},
++                            labels=np.array(labels))
++        print(f"[saved] {out}")
++
++    # machine-readable summary, consumed by scripts/collect_arms.py
++    summary = {"split": args.split, "n": len(meta),
++               "ckpt": str(args.ckpt), "avg_eer": avg_eer,
++               "cache_dir": str(cache_dir),
++               "lambda_t": ckpt.get("lambda_t"), "lambda_f": ckpt.get("lambda_f"),
++               "lambda_eff": ckpt.get("lambda_eff"),
++               "phases": {p: {"eer": v["eer"], "auc": v["auc"]}
++                          for p, v in results.items()}}
++    jout = Path(args.ckpt).parent / f"eval_{args.split}{args.out_suffix}.json"
++    with open(jout, "w", encoding="utf-8") as f:
++        json.dump(summary, f, indent=1)
++    print(f"[saved] {jout}")
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/scripts/fetch_data.py b/scripts/fetch_data.py
+index 96987f9..52f1303 100644
+--- a/scripts/fetch_data.py
++++ b/scripts/fetch_data.py
+@@ -42,6 +42,7 @@ import hashlib
+ import json
+ import os
+ import shutil
++import subprocess
+ import sys
+ import time
+ from concurrent.futures import ThreadPoolExecutor
+@@ -97,27 +98,60 @@ def list_repo_files(endpoint: str, repo: str, subdir: str = "data") -> list[dict
+ 
+ # ------------------------------------------------------------ multi-thread GET
+ def _fetch_range(url: str, start: int, end: int, dest: Path,
+-                 retries: int = 5) -> None:
+-    """Download [start, end] into dest (which is the byte range itself)."""
++                 retries: int = 8) -> None:
++    """Download [start, end] into dest, resuming from whatever is there.
++
++    curl is used rather than requests: on flaky links a half-open connection
++    under urllib3 can sit in a read that never returns, whereas curl's
++    --max-time kills it and we simply resume from the byte count we already
++    have. curl is present on every GPU box we rent.
++    """
+     want = end - start + 1
+-    for attempt in range(retries):
++    dest.parent.mkdir(parents=True, exist_ok=True)
++    attempt = 0
++    while True:
+         have = dest.stat().st_size if dest.exists() else 0
+         if have >= want:
+             return
+-        headers = {"Range": f"bytes={start + have}-{end}"}
++        tmp = dest.with_name(dest.name + ".cur")
++        tmp.unlink(missing_ok=True)
++        cmd = ["curl", "-sS", "-L", "--fail", "--max-time", "240",
++               "-r", f"{start + have}-{end}", "-o", str(tmp), url]
+         try:
+-            with requests.get(url, headers=headers, stream=True, timeout=60) as r:
+-                if r.status_code not in (200, 206):
+-                    raise RuntimeError(f"HTTP {r.status_code}")
+-                mode = "ab" if have else "wb"
+-                with open(dest, mode) as f:
+-                    for chunk in r.iter_content(chunk_size=1 << 20):
+-                        if chunk:
+-                            f.write(chunk)
+-        except Exception as exc:                       # retry with backoff
+-            if attempt == retries - 1:
+-                raise RuntimeError(f"range {start}-{end} failed: {exc}") from exc
+-            time.sleep(1.5 * (attempt + 1))
++            sub = subprocess.run(cmd, capture_output=True, text=True)
++        except FileNotFoundError:                      # no curl -> requests
++            _fetch_range_requests(url, start + have, end, dest)
++            return
++        if sub.returncode != 0 or not tmp.exists():
++            attempt += 1
++            msg = (sub.stderr or f"curl rc={sub.returncode}").strip()[:200]
++            if attempt >= retries:
++                raise RuntimeError(f"range {start}-{end} failed: {msg}")
++            print(f"       retry {start}-{end} from {have} bytes ({msg})",
++                  flush=True)
++            tmp.unlink(missing_ok=True)
++            time.sleep(1.0 * attempt)
++            continue
++        with open(dest, "ab") as f, open(tmp, "rb") as g:
++            shutil.copyfileobj(g, f)
++        tmp.unlink(missing_ok=True)
++        if dest.stat().st_size == have:            # server sent nothing
++            attempt += 1
++            if attempt >= retries:
++                raise RuntimeError(f"range {start}-{end} returned no data")
++
++
++def _fetch_range_requests(url: str, start: int, end: int, dest: Path) -> None:
++    """Fallback for machines without curl."""
++    have = dest.stat().st_size if dest.exists() else 0
++    want = end - start + 1
++    headers = {"Range": f"bytes={start}-{end}"}
++    with requests.get(url, headers=headers, stream=True, timeout=(10, 30)) as r:
++        mode = "ab" if have else "wb"
++        with open(dest, mode) as f:
++            for chunk in r.iter_content(chunk_size=1 << 20):
++                if chunk:
++                    f.write(chunk)
+ 
+ 
+ def parallel_download(url: str, size: int, dest: Path, workers: int = 8,
+diff --git a/scripts/infer.py b/scripts/infer.py
+index aa4aa14..a747741 100644
+--- a/scripts/infer.py
++++ b/scripts/infer.py
+@@ -1,106 +1,106 @@
+-#!/usr/bin/env python3
+-"""Inference: score one file or a whole directory with a trained WCL model.
+-
+-Optionally applies an AFE phase prefix first (e.g. --phase vad simulates the
+-full front-end cascade before scoring), which is useful to reproduce the
+-robustness setting of the paper.
+-
+-Usage:
+-    python scripts/infer.py --config configs/smoke.yaml \
+-        --ckpt outputs/smoke/default/best.pt --input /path/to/audio.flac
+-    python scripts/infer.py --config configs/smoke.yaml \
+-        --ckpt outputs/smoke/default/best.pt --input /path/dir/ \
+-        --phase vad --threshold 0.5
+-"""
+-import argparse
+-import sys
+-from pathlib import Path
+-
+-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+-
+-import numpy as np
+-import torch
+-
+-from wcl.afe import apply_cascade, cascade_prefix, STAGES
+-from wcl.features import (log_mel, pad_or_crop, normalize, pad_or_crop_wave,
+-                          normalize_wave)
+-from wcl.model import build_model
+-from wcl.utils import load_config, get_device
+-
+-
+-def score_file(model, path: str, cfg, device, phase: str,
+-               afe_seed: int = 0) -> float:
+-    sr = cfg["data"]["sr"]
+-    fcfg = cfg["feature"]
+-    ftype = fcfg.get("type", "logmel")
+-    import librosa
+-    x, _ = librosa.load(path, sr=sr, mono=True)
+-    x = x.astype(np.float32)
+-    if phase != "clean":
+-        prefix = cascade_prefix(STAGES, phase)
+-        # stable per-file seed: with a fixed seed every file would receive the
+-        # same draw from the distortion family
+-        import zlib
+-        seed = (int(afe_seed) * 1_000_003 + zlib.crc32(str(path).encode())) % (2 ** 31 - 1)
+-        x = apply_cascade(x, sr, cfg["afe"], seed=seed, stages=prefix)
+-    if ftype == "raw":
+-        n_samples = int(round(sr * float(fcfg.get("duration", 4.0))))
+-        feat = normalize_wave(pad_or_crop_wave(x, n_samples))
+-        xin = torch.from_numpy(feat).unsqueeze(0).unsqueeze(0).to(device)
+-    else:
+-        feat = log_mel(x, sr, fcfg["n_fft"], fcfg["hop"], fcfg["n_mels"])
+-        feat = pad_or_crop(feat, fcfg["max_frames"])
+-        feat = normalize(feat, fcfg.get("normalize", "meanstd"))
+-        xin = torch.from_numpy(feat).unsqueeze(0).unsqueeze(0).to(device)
+-    model.eval()
+-    with torch.no_grad():
+-        logits, _ = model(xin)
+-        p = torch.softmax(logits, dim=1)[:, 1].item()
+-    return p
+-
+-
+-def main():
+-    ap = argparse.ArgumentParser()
+-    ap.add_argument("--config", required=True)
+-    ap.add_argument("--root", default=None,
+-                    help="override data.root (e.g. synthetic data dir)")
+-    ap.add_argument("--ckpt", required=True)
+-    ap.add_argument("--input", required=True, help="audio file or directory")
+-    ap.add_argument("--phase", default="clean",
+-                    choices=["clean"] + STAGES,
+-                    help="AFE prefix to apply before scoring (default: clean)")
+-    ap.add_argument("--afe-seed", type=int, default=0,
+-                    help="base seed of the AFE distortion draw (see preprocess.py)")
+-    ap.add_argument("--threshold", type=float, default=0.5,
+-                    help="score > threshold => bonafide (use the value printed "
+-                         "by evaluate.py for the best dev threshold)")
+-    args = ap.parse_args()
+-
+-    cfg = load_config(args.config)
+-    if args.root:
+-        cfg["data"]["root"] = args.root
+-    device = get_device()
+-    ckpt = torch.load(args.ckpt, map_location="cpu")
+-    model = build_model(cfg).to(device)
+-    model.load_state_dict(ckpt["model"])
+-    model.eval()
+-
+-    inp = Path(args.input)
+-    files = sorted(inp.rglob("*.flac")) if inp.is_dir() else [inp]
+-    if inp.is_dir():
+-        files += sorted(inp.rglob("*.wav"))
+-        files = sorted(set(files))
+-    if not files:
+-        print("no audio files found")
+-        return
+-
+-    print(f"{'file':<40} {'score':>7}  verdict")
+-    print("-" * 60)
+-    for f in files:
+-        p = score_file(model, str(f), cfg, device, args.phase, args.afe_seed)
+-        verdict = "bonafide" if p > args.threshold else "spoof"
+-        print(f"{str(f)[-40:]:<40} {p:7.4f}  {verdict}")
+-
+-
+-if __name__ == "__main__":
+-    main()
++#!/usr/bin/env python3
++"""Inference: score one file or a whole directory with a trained WCL model.
++
++Optionally applies an AFE phase prefix first (e.g. --phase vad simulates the
++full front-end cascade before scoring), which is useful to reproduce the
++robustness setting of the paper.
++
++Usage:
++    python scripts/infer.py --config configs/smoke.yaml \
++        --ckpt outputs/smoke/default/best.pt --input /path/to/audio.flac
++    python scripts/infer.py --config configs/smoke.yaml \
++        --ckpt outputs/smoke/default/best.pt --input /path/dir/ \
++        --phase vad --threshold 0.5
++"""
++import argparse
++import sys
++from pathlib import Path
++
++sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
++
++import numpy as np
++import torch
++
++from wcl.afe import apply_cascade, cascade_prefix, STAGES
++from wcl.features import (log_mel, pad_or_crop, normalize, pad_or_crop_wave,
++                          normalize_wave)
++from wcl.model import build_model
++from wcl.utils import load_config, get_device
++
++
++def score_file(model, path: str, cfg, device, phase: str,
++               afe_seed: int = 0) -> float:
++    sr = cfg["data"]["sr"]
++    fcfg = cfg["feature"]
++    ftype = fcfg.get("type", "logmel")
++    import librosa
++    x, _ = librosa.load(path, sr=sr, mono=True)
++    x = x.astype(np.float32)
++    if phase != "clean":
++        prefix = cascade_prefix(STAGES, phase)
++        # stable per-file seed: with a fixed seed every file would receive the
++        # same draw from the distortion family
++        import zlib
++        seed = (int(afe_seed) * 1_000_003 + zlib.crc32(str(path).encode())) % (2 ** 31 - 1)
++        x = apply_cascade(x, sr, cfg["afe"], seed=seed, stages=prefix)
++    if ftype == "raw":
++        n_samples = int(round(sr * float(fcfg.get("duration", 4.0))))
++        feat = normalize_wave(pad_or_crop_wave(x, n_samples))
++        xin = torch.from_numpy(feat).unsqueeze(0).unsqueeze(0).to(device)
++    else:
++        feat = log_mel(x, sr, fcfg["n_fft"], fcfg["hop"], fcfg["n_mels"])
++        feat = pad_or_crop(feat, fcfg["max_frames"])
++        feat = normalize(feat, fcfg.get("normalize", "meanstd"))
++        xin = torch.from_numpy(feat).unsqueeze(0).unsqueeze(0).to(device)
++    model.eval()
++    with torch.no_grad():
++        logits, _ = model(xin)
++        p = torch.softmax(logits, dim=1)[:, 1].item()
++    return p
++
++
++def main():
++    ap = argparse.ArgumentParser()
++    ap.add_argument("--config", required=True)
++    ap.add_argument("--root", default=None,
++                    help="override data.root (e.g. synthetic data dir)")
++    ap.add_argument("--ckpt", required=True)
++    ap.add_argument("--input", required=True, help="audio file or directory")
++    ap.add_argument("--phase", default="clean",
++                    choices=["clean"] + STAGES,
++                    help="AFE prefix to apply before scoring (default: clean)")
++    ap.add_argument("--afe-seed", type=int, default=0,
++                    help="base seed of the AFE distortion draw (see preprocess.py)")
++    ap.add_argument("--threshold", type=float, default=0.5,
++                    help="score > threshold => bonafide (use the value printed "
++                         "by evaluate.py for the best dev threshold)")
++    args = ap.parse_args()
++
++    cfg = load_config(args.config)
++    if args.root:
++        cfg["data"]["root"] = args.root
++    device = get_device()
++    ckpt = torch.load(args.ckpt, map_location="cpu")
++    model = build_model(cfg).to(device)
++    model.load_state_dict(ckpt["model"])
++    model.eval()
++
++    inp = Path(args.input)
++    files = sorted(inp.rglob("*.flac")) if inp.is_dir() else [inp]
++    if inp.is_dir():
++        files += sorted(inp.rglob("*.wav"))
++        files = sorted(set(files))
++    if not files:
++        print("no audio files found")
++        return
++
++    print(f"{'file':<40} {'score':>7}  verdict")
++    print("-" * 60)
++    for f in files:
++        p = score_file(model, str(f), cfg, device, args.phase, args.afe_seed)
++        verdict = "bonafide" if p > args.threshold else "spoof"
++        print(f"{str(f)[-40:]:<40} {p:7.4f}  {verdict}")
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/scripts/preprocess.py b/scripts/preprocess.py
+index 3f5d17a..937a07f 100644
+--- a/scripts/preprocess.py
++++ b/scripts/preprocess.py
+@@ -1,189 +1,189 @@
+-#!/usr/bin/env python3
+-"""Pre-extract feature caches for all AFE phase prefixes.
+-
+-Two feature types are supported (``feature.type`` in the config):
+-
+-  * ``logmel`` — [T, F] log-mel spectrogram, input of the 2D-CNN encoder;
+-  * ``raw``    — [N] standardized waveform (N = sr * duration), input of the
+-                 XLS-R + AASIST backbone used by TFCL.
+-
+-For every utterance in a split, up to five arrays are produced:
+-    clean, aec, ns (AEC+NS), agc (AEC+NS+AGC), vad (AEC+NS+AGC+VAD)
+-stored as {cache_dir}/{split}/{phase}/{utt_id}.npy, plus {split}/meta.json.
+-
+-The work is CPU-bound (FLAC decode + four AFE stages per utterance), so it runs
+-over a process pool: serially this is ~14 h for the full LA corpus, which is
+-billed time on a rented GPU box.
+-
+-Usage:
+-    python scripts/preprocess.py --config configs/three_arm_phys.yaml --splits train dev
+-    python scripts/preprocess.py --config configs/three_arm_phys.yaml --splits eval --workers 16
+-    python scripts/preprocess.py --config configs/three_arm_phys.yaml --splits eval \\
+-        --afe-seed 7 --cache-dir cache/phys_v4_holdout      # unseen distortion draw
+-    python scripts/preprocess.py --config configs/smoke.yaml --splits train --limit 32
+-"""
+-import argparse
+-import json
+-import multiprocessing as mp
+-import sys
+-from pathlib import Path
+-
+-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+-
+-import numpy as np
+-from tqdm import tqdm
+-
+-from wcl.afe import apply_cascade, cascade_prefix, STAGES
+-from wcl.dataset import parse_protocol
+-from wcl.features import (log_mel, pad_or_crop, normalize, pad_or_crop_wave,
+-                          normalize_wave)
+-from wcl.utils import load_config
+-
+-_G: dict = {}          # per-process globals (config is inherited via fork/spawn)
+-
+-
+-def _init(cfg: dict, split: str, phases: list[str], afe_seed: int,
+-          cache_dir: str, dtype: str) -> None:
+-    _G.clear()
+-    _G.update(cfg=cfg, split=split, phases=phases, afe_seed=afe_seed,
+-              cache_dir=cache_dir, dtype=dtype)
+-    for p in phases:
+-        (Path(cache_dir) / split / p).mkdir(parents=True, exist_ok=True)
+-
+-
+-def _work(args) -> dict:
+-    idx, item = args
+-    import librosa
+-
+-    cfg = _G["cfg"]
+-    split, phases = _G["split"], _G["phases"]
+-    afe_cfg, fcfg = cfg["afe"], cfg["feature"]
+-    sr = int(cfg["data"]["sr"])
+-    ftype = fcfg.get("type", "logmel")
+-    cache_dir = Path(_G["cache_dir"])
+-    np_dtype = np.float16 if _G["dtype"] == "float16" else np.float32
+-
+-    x, _ = librosa.load(item["path"], sr=sr, mono=True)
+-    x = x.astype(np.float32)
+-    # per-utterance seed: with a fixed seed every utterance receives the *same*
+-    # random draw, which silently turns the distortion family into a point
+-    utt_seed = (int(_G["afe_seed"]) * 1_000_003 + idx * 7919) % (2 ** 31 - 1)
+-    for phase in phases:
+-        prefix = cascade_prefix(STAGES, phase) if phase != "clean" else []
+-        y = apply_cascade(x, sr, afe_cfg, seed=utt_seed, stages=prefix) if prefix else x
+-        if ftype == "raw":
+-            feat = pad_or_crop_wave(y, int(round(sr * float(fcfg.get("duration", 4.0)))))
+-            feat = normalize_wave(feat)
+-        else:
+-            feat = log_mel(y, sr, fcfg["n_fft"], fcfg["hop"], fcfg["n_mels"])
+-            feat = pad_or_crop(feat, fcfg["max_frames"])
+-            feat = normalize(feat, fcfg.get("normalize", "meanstd"))
+-        np.save(cache_dir / split / phase / f"{item['utt']}.npy",
+-                feat.astype(np_dtype))
+-    return {"_idx": idx, "utt": item["utt"], "path": item["path"],
+-            "label": item["label"], "attack": item["attack"]}
+-
+-
+-def main():
+-    ap = argparse.ArgumentParser()
+-    ap.add_argument("--config", required=True)
+-    ap.add_argument("--root", default=None,
+-                    help="override data.root (e.g. synthetic data dir)")
+-    ap.add_argument("--splits", nargs="+", default=["train", "dev"])
+-    ap.add_argument("--phases", nargs="+", default=None,
+-                    help="subset of {clean,aec,ns,agc,vad}; default = all five. "
+-                         "Training needs every phase in train.stage_probs; the "
+-                         "eval table needs all five.")
+-    ap.add_argument("--limit", type=int, default=None,
+-                    help="only process the first N utterances per split (smoke)")
+-    ap.add_argument("--afe-seed", type=int, default=0,
+-                    help="base seed for the AFE distortion draw. Different values "
+-                         "give different members of the distortion family, which "
+-                         "is how a held-out cache is made")
+-    ap.add_argument("--cache-dir", default=None,
+-                    help="override data.cache_dir (e.g. cache/holdout)")
+-    ap.add_argument("--workers", type=int, default=min(16, mp.cpu_count()),
+-                    help="process-pool size; the job is CPU-bound")
+-    ap.add_argument("--dtype", default="float32", choices=["float32", "float16"],
+-                    help="storage precision; float16 halves a 156 GB cache")
+-    ap.add_argument("--overwrite", action="store_true",
+-                    help="recompute utterances whose files already exist")
+-    args = ap.parse_args()
+-
+-    cfg = load_config(args.config)
+-    if args.root:
+-        cfg["data"]["root"] = args.root
+-    if args.cache_dir:
+-        cfg["data"]["cache_dir"] = args.cache_dir
+-    data_root = Path(cfg["data"]["root"])
+-    cache_dir = Path(cfg["data"]["cache_dir"])
+-    fcfg = cfg["feature"]
+-    ftype = fcfg.get("type", "logmel")
+-    phases = args.phases or (["clean"] + STAGES)
+-
+-    split_map = {
+-        "train": ("ASVspoof2019_LA_train", "ASVspoof2019_LA_cm_protocols/LA.cm.train.trn.txt"),
+-        "dev": ("ASVspoof2019_LA_dev", "ASVspoof2019_LA_cm_protocols/LA.cm.dev.trl.txt"),
+-        "eval": ("ASVspoof2019_LA_eval", "ASVspoof2019_LA_cm_protocols/LA.cm.eval.trl.txt"),
+-    }
+-
+-    for split in args.splits:
+-        flac_dir_name, proto_rel = split_map[split]
+-        flac_dir = data_root / flac_dir_name / "flac"
+-        proto_path = data_root / proto_rel
+-        if not proto_path.exists():
+-            print(f"[skip] protocol not found: {proto_path} "
+-                  f"(download ASVspoof 2019 LA and place it under {data_root})")
+-            continue
+-        entries = parse_protocol(proto_path, flac_dir)
+-        if args.limit:
+-            entries = entries[: args.limit]
+-        missing = []
+-        for i, e in enumerate(entries):
+-            if args.overwrite or not all(
+-                    (cache_dir / split / p / f"{e['utt']}.npy").exists()
+-                    for p in phases):
+-                missing.append((i, e))
+-        print(f"[preprocess] {split}: {len(entries)} utterances x {len(phases)} "
+-              f"phases -> {len(missing)} to compute, workers={args.workers}, "
+-              f"dtype={args.dtype}")
+-
+-        meta = [None] * len(entries)
+-        meta_path = cache_dir / split / "meta.json"
+-        if meta_path.exists() and not args.overwrite:
+-            try:
+-                old = {m["utt"]: m for m in json.loads(meta_path.read_text())}
+-                for i, e in enumerate(entries):
+-                    if e["utt"] in old:
+-                        meta[i] = old[e["utt"]]
+-            except Exception:
+-                pass
+-
+-        if missing:
+-            if args.workers <= 1:
+-                _init(cfg, split, phases, args.afe_seed, str(cache_dir), args.dtype)
+-                for it in tqdm(missing, desc=split):
+-                    m = _work(it)
+-                    meta[m.pop("_idx")] = m
+-            else:
+-                ctx = mp.get_context("spawn" if sys.platform == "win32" else "fork")
+-                with ctx.Pool(args.workers, initializer=_init,
+-                              initargs=(cfg, split, phases, args.afe_seed,
+-                                        str(cache_dir), args.dtype)) as pool:
+-                    for m in tqdm(pool.imap_unordered(_work, missing,
+-                                                      chunksize=8), total=len(missing),
+-                                  desc=split):
+-                        meta[m.pop("_idx")] = m
+-
+-        meta = [m for m in meta if m is not None]
+-        meta_path.parent.mkdir(parents=True, exist_ok=True)
+-        with open(meta_path, "w", encoding="utf-8") as f:
+-            json.dump(meta, f, indent=1)
+-        size_gb = sum(f.stat().st_size for p in phases
+-                      for f in (cache_dir / split / p).glob("*.npy")) / 1e9
+-        print(f"[done] {split}: meta at {meta_path} (n={len(meta)}), "
+-              f"{size_gb:.1f} GB on disk")
+-
+-
+-if __name__ == "__main__":
+-    main()
++#!/usr/bin/env python3
++"""Pre-extract feature caches for all AFE phase prefixes.
++
++Two feature types are supported (``feature.type`` in the config):
++
++  * ``logmel`` — [T, F] log-mel spectrogram, input of the 2D-CNN encoder;
++  * ``raw``    — [N] standardized waveform (N = sr * duration), input of the
++                 XLS-R + AASIST backbone used by TFCL.
++
++For every utterance in a split, up to five arrays are produced:
++    clean, aec, ns (AEC+NS), agc (AEC+NS+AGC), vad (AEC+NS+AGC+VAD)
++stored as {cache_dir}/{split}/{phase}/{utt_id}.npy, plus {split}/meta.json.
++
++The work is CPU-bound (FLAC decode + four AFE stages per utterance), so it runs
++over a process pool: serially this is ~14 h for the full LA corpus, which is
++billed time on a rented GPU box.
++
++Usage:
++    python scripts/preprocess.py --config configs/three_arm_phys.yaml --splits train dev
++    python scripts/preprocess.py --config configs/three_arm_phys.yaml --splits eval --workers 16
++    python scripts/preprocess.py --config configs/three_arm_phys.yaml --splits eval \\
++        --afe-seed 7 --cache-dir cache/phys_v4_holdout      # unseen distortion draw
++    python scripts/preprocess.py --config configs/smoke.yaml --splits train --limit 32
++"""
++import argparse
++import json
++import multiprocessing as mp
++import sys
++from pathlib import Path
++
++sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
++
++import numpy as np
++from tqdm import tqdm
++
++from wcl.afe import apply_cascade, cascade_prefix, STAGES
++from wcl.dataset import parse_protocol
++from wcl.features import (log_mel, pad_or_crop, normalize, pad_or_crop_wave,
++                          normalize_wave)
++from wcl.utils import load_config
++
++_G: dict = {}          # per-process globals (config is inherited via fork/spawn)
++
++
++def _init(cfg: dict, split: str, phases: list[str], afe_seed: int,
++          cache_dir: str, dtype: str) -> None:
++    _G.clear()
++    _G.update(cfg=cfg, split=split, phases=phases, afe_seed=afe_seed,
++              cache_dir=cache_dir, dtype=dtype)
++    for p in phases:
++        (Path(cache_dir) / split / p).mkdir(parents=True, exist_ok=True)
++
++
++def _work(args) -> dict:
++    idx, item = args
++    import librosa
++
++    cfg = _G["cfg"]
++    split, phases = _G["split"], _G["phases"]
++    afe_cfg, fcfg = cfg["afe"], cfg["feature"]
++    sr = int(cfg["data"]["sr"])
++    ftype = fcfg.get("type", "logmel")
++    cache_dir = Path(_G["cache_dir"])
++    np_dtype = np.float16 if _G["dtype"] == "float16" else np.float32
++
++    x, _ = librosa.load(item["path"], sr=sr, mono=True)
++    x = x.astype(np.float32)
++    # per-utterance seed: with a fixed seed every utterance receives the *same*
++    # random draw, which silently turns the distortion family into a point
++    utt_seed = (int(_G["afe_seed"]) * 1_000_003 + idx * 7919) % (2 ** 31 - 1)
++    for phase in phases:
++        prefix = cascade_prefix(STAGES, phase) if phase != "clean" else []
++        y = apply_cascade(x, sr, afe_cfg, seed=utt_seed, stages=prefix) if prefix else x
++        if ftype == "raw":
++            feat = pad_or_crop_wave(y, int(round(sr * float(fcfg.get("duration", 4.0)))))
++            feat = normalize_wave(feat)
++        else:
++            feat = log_mel(y, sr, fcfg["n_fft"], fcfg["hop"], fcfg["n_mels"])
++            feat = pad_or_crop(feat, fcfg["max_frames"])
++            feat = normalize(feat, fcfg.get("normalize", "meanstd"))
++        np.save(cache_dir / split / phase / f"{item['utt']}.npy",
++                feat.astype(np_dtype))
++    return {"_idx": idx, "utt": item["utt"], "path": item["path"],
++            "label": item["label"], "attack": item["attack"]}
++
++
++def main():
++    ap = argparse.ArgumentParser()
++    ap.add_argument("--config", required=True)
++    ap.add_argument("--root", default=None,
++                    help="override data.root (e.g. synthetic data dir)")
++    ap.add_argument("--splits", nargs="+", default=["train", "dev"])
++    ap.add_argument("--phases", nargs="+", default=None,
++                    help="subset of {clean,aec,ns,agc,vad}; default = all five. "
++                         "Training needs every phase in train.stage_probs; the "
++                         "eval table needs all five.")
++    ap.add_argument("--limit", type=int, default=None,
++                    help="only process the first N utterances per split (smoke)")
++    ap.add_argument("--afe-seed", type=int, default=0,
++                    help="base seed for the AFE distortion draw. Different values "
++                         "give different members of the distortion family, which "
++                         "is how a held-out cache is made")
++    ap.add_argument("--cache-dir", default=None,
++                    help="override data.cache_dir (e.g. cache/holdout)")
++    ap.add_argument("--workers", type=int, default=min(16, mp.cpu_count()),
++                    help="process-pool size; the job is CPU-bound")
++    ap.add_argument("--dtype", default="float32", choices=["float32", "float16"],
++                    help="storage precision; float16 halves a 156 GB cache")
++    ap.add_argument("--overwrite", action="store_true",
++                    help="recompute utterances whose files already exist")
++    args = ap.parse_args()
++
++    cfg = load_config(args.config)
++    if args.root:
++        cfg["data"]["root"] = args.root
++    if args.cache_dir:
++        cfg["data"]["cache_dir"] = args.cache_dir
++    data_root = Path(cfg["data"]["root"])
++    cache_dir = Path(cfg["data"]["cache_dir"])
++    fcfg = cfg["feature"]
++    ftype = fcfg.get("type", "logmel")
++    phases = args.phases or (["clean"] + STAGES)
++
++    split_map = {
++        "train": ("ASVspoof2019_LA_train", "ASVspoof2019_LA_cm_protocols/LA.cm.train.trn.txt"),
++        "dev": ("ASVspoof2019_LA_dev", "ASVspoof2019_LA_cm_protocols/LA.cm.dev.trl.txt"),
++        "eval": ("ASVspoof2019_LA_eval", "ASVspoof2019_LA_cm_protocols/LA.cm.eval.trl.txt"),
++    }
++
++    for split in args.splits:
++        flac_dir_name, proto_rel = split_map[split]
++        flac_dir = data_root / flac_dir_name / "flac"
++        proto_path = data_root / proto_rel
++        if not proto_path.exists():
++            print(f"[skip] protocol not found: {proto_path} "
++                  f"(download ASVspoof 2019 LA and place it under {data_root})")
++            continue
++        entries = parse_protocol(proto_path, flac_dir)
++        if args.limit:
++            entries = entries[: args.limit]
++        missing = []
++        for i, e in enumerate(entries):
++            if args.overwrite or not all(
++                    (cache_dir / split / p / f"{e['utt']}.npy").exists()
++                    for p in phases):
++                missing.append((i, e))
++        print(f"[preprocess] {split}: {len(entries)} utterances x {len(phases)} "
++              f"phases -> {len(missing)} to compute, workers={args.workers}, "
++              f"dtype={args.dtype}")
++
++        meta = [None] * len(entries)
++        meta_path = cache_dir / split / "meta.json"
++        if meta_path.exists() and not args.overwrite:
++            try:
++                old = {m["utt"]: m for m in json.loads(meta_path.read_text())}
++                for i, e in enumerate(entries):
++                    if e["utt"] in old:
++                        meta[i] = old[e["utt"]]
++            except Exception:
++                pass
++
++        if missing:
++            if args.workers <= 1:
++                _init(cfg, split, phases, args.afe_seed, str(cache_dir), args.dtype)
++                for it in tqdm(missing, desc=split):
++                    m = _work(it)
++                    meta[m.pop("_idx")] = m
++            else:
++                ctx = mp.get_context("spawn" if sys.platform == "win32" else "fork")
++                with ctx.Pool(args.workers, initializer=_init,
++                              initargs=(cfg, split, phases, args.afe_seed,
++                                        str(cache_dir), args.dtype)) as pool:
++                    for m in tqdm(pool.imap_unordered(_work, missing,
++                                                      chunksize=8), total=len(missing),
++                                  desc=split):
++                        meta[m.pop("_idx")] = m
++
++        meta = [m for m in meta if m is not None]
++        meta_path.parent.mkdir(parents=True, exist_ok=True)
++        with open(meta_path, "w", encoding="utf-8") as f:
++            json.dump(meta, f, indent=1)
++        size_gb = sum(f.stat().st_size for p in phases
++                      for f in (cache_dir / split / p).glob("*.npy")) / 1e9
++        print(f"[done] {split}: meta at {meta_path} (n={len(meta)}), "
++              f"{size_gb:.1f} GB on disk")
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/scripts/run_campaign.sh b/scripts/run_campaign.sh
+index d172c3c..6622a7b 100644
+--- a/scripts/run_campaign.sh
++++ b/scripts/run_campaign.sh
+@@ -1,94 +1,94 @@
+-#!/usr/bin/env bash
+-# 跑整个 campaign（core / seeds / abl / alpha / afe）。幂等、可断点续跑。
+-#
+-#   bash scripts/run_campaign.sh                     # 默认 tier=core seeds abl alpha
+-#   TIERS="core" bash scripts/run_campaign.sh        # 只跑三臂主表
+-#   DRY=1 bash scripts/run_campaign.sh               # 只打印将要做什么
+-#   HOLD_OUT=cache/camp_v4_holdout bash scripts/run_campaign.sh   # 额外评 unseen 失真
+-#
+-# 每一轮都会：
+-#   1) 检查该 run 的缓存是否存在（缺失就打印 preprocess 命令并跳过，不浪费 GPU）
+-#   2) 若 eval_eval.json 已存在 -> 认为完成，跳过
+-#   3) 若 last.pt 存在 -> --resume 续训；否则从头训
+-#   4) 训完自动在 eval 上出五阶段表；有 holdout 缓存则再出一份
+-#
+-# 换机照旧要注意：
+-#   * 远端通常只有 python3，没有 python
+-#   * 句柄上限：eval/preprocess 的 num_workers 一高就 "Too many open files"
+-#   * ssh 断开要保住进程：setsid bash scripts/run_campaign.sh < /dev/null > campaign.log 2>&1 &
+-set -uo pipefail
+-
+-CAMPAIGN="${CAMPAIGN:-camp_v4}"
+-MANIFEST="${MANIFEST:-campaign/$CAMPAIGN/manifest.tsv}"
+-TIERS="${TIERS:-core seeds abl alpha}"
+-PY="${PY:-python3}"
+-HOLD_OUT="${HOLD_OUT:-}"
+-ULIMIT="${ULIMIT:-65536}"
+-
+-[ -f "$MANIFEST" ] || { echo "找不到 $MANIFEST，先跑 scripts/make_campaign.py"; exit 1; }
+-ulimit -n "$ULIMIT" 2>/dev/null || echo "[warn] ulimit 未提升到 $ULIMIT"
+-mkdir -p logs
+-
+-echo "=============================================================="
+-echo "campaign=$CAMPAIGN  tiers=[$TIERS]  $(date '+%F %T')"
+-echo "=============================================================="
+-
+-while IFS=$'\t' read -r name tier arm cfg cache; do
+-  name="${name%$'\r'}"; tier="${tier%$'\r'}"; arm="${arm%$'\r'}"
+-  cfg="${cfg%$'\r'}";  cache="${cache%$'\r'}"
+-  [ -z "$name" ] && continue
+-  [ "$name" = "name" ] && continue
+-  keep=0
+-  for t in $TIERS; do [ "$t" = "$tier" ] && keep=1; done
+-  [ $keep -eq 1 ] || continue
+-
+-  out=$(awk '/^out_dir:/{print $2}' "$cfg" | tr -d "\r")
+-  run_dir="$out/$name"
+-  log="logs/$name.log"
+-
+-  if [ ! -f "$cache/train/meta.json" ] || [ ! -f "$cache/eval/meta.json" ]; then
+-    echo "[skip] $name：缓存 $cache 不完整（缺 train 或 eval 的 meta.json）。先跑一次："
+-    echo "       $PY scripts/preprocess.py --config $cfg --splits train dev eval --workers 16"
+-    echo "       （同一缓存下的所有 run 共用这一份，只需跑一次）"
+-    continue
+-  fi
+-  if [ -f "$run_dir/eval_eval.json" ]; then
+-    echo "[done] $name 已有 eval_eval.json，跳过"
+-    continue
+-  fi
+-  if [ "${DRY:-0}" = "1" ]; then
+-    echo "[dry ] $name (tier=$tier arm=$arm) -> $log"
+-    continue
+-  fi
+-
+-  echo "---- $(date '+%T') $name (tier=$tier arm=$arm) -> $log"
+-  if [ -f "$run_dir/last.pt" ]; then
+-    "$PY" scripts/train.py --config "$cfg" --tag "$name" --loss "$arm" \
+-        --resume "$run_dir/last.pt" >>"$log" 2>&1 || {
+-      echo "[fail] $name 训练失败，见 $log"; continue; }
+-  else
+-    "$PY" scripts/train.py --config "$cfg" --tag "$name" --loss "$arm" \
+-        >>"$log" 2>&1 || {
+-      echo "[fail] $name 训练失败，见 $log"; continue; }
+-  fi
+-
+-  ckpt="$run_dir/best.pt"
+-  [ -f "$ckpt" ] || ckpt="$run_dir/final.pt"
+-  if [ ! -f "$ckpt" ]; then
+-    echo "[fail] $name 没有 checkpoint，见 $log"; continue
+-  fi
+-  echo "       eval on eval split"
+-  "$PY" scripts/evaluate.py --config "$cfg" --ckpt "$ckpt" --split eval \
+-      --save-scores >>"$log" 2>&1 || echo "[warn] $name eval 失败"
+-
+-  if [ -n "$HOLD_OUT" ] && [ -f "$HOLD_OUT/eval/meta.json" ]; then
+-    echo "       eval on held-out distortion draw ($HOLD_OUT)"
+-    "$PY" scripts/evaluate.py --config "$cfg" --ckpt "$ckpt" --split eval \
+-        --cache-dir "$HOLD_OUT" --out-suffix _holdout >>"$log" 2>&1 \
+-        || echo "[warn] holdout eval 失败"
+-  fi
+-done < "$MANIFEST"
+-
+-echo "=============================================================="
+-echo "$(date '+%T') 汇总："
+-"$PY" scripts/collect_campaign.py --root "${OUT_ROOT:-outputs/$CAMPAIGN}" || true
++#!/usr/bin/env bash
++# 跑整个 campaign（core / seeds / abl / alpha / afe）。幂等、可断点续跑。
++#
++#   bash scripts/run_campaign.sh                     # 默认 tier=core seeds abl alpha
++#   TIERS="core" bash scripts/run_campaign.sh        # 只跑三臂主表
++#   DRY=1 bash scripts/run_campaign.sh               # 只打印将要做什么
++#   HOLD_OUT=cache/camp_v4_holdout bash scripts/run_campaign.sh   # 额外评 unseen 失真
++#
++# 每一轮都会：
++#   1) 检查该 run 的缓存是否存在（缺失就打印 preprocess 命令并跳过，不浪费 GPU）
++#   2) 若 eval_eval.json 已存在 -> 认为完成，跳过
++#   3) 若 last.pt 存在 -> --resume 续训；否则从头训
++#   4) 训完自动在 eval 上出五阶段表；有 holdout 缓存则再出一份
++#
++# 换机照旧要注意：
++#   * 远端通常只有 python3，没有 python
++#   * 句柄上限：eval/preprocess 的 num_workers 一高就 "Too many open files"
++#   * ssh 断开要保住进程：setsid bash scripts/run_campaign.sh < /dev/null > campaign.log 2>&1 &
++set -uo pipefail
++
++CAMPAIGN="${CAMPAIGN:-camp_v4}"
++MANIFEST="${MANIFEST:-campaign/$CAMPAIGN/manifest.tsv}"
++TIERS="${TIERS:-core seeds abl alpha}"
++PY="${PY:-python3}"
++HOLD_OUT="${HOLD_OUT:-}"
++ULIMIT="${ULIMIT:-65536}"
++
++[ -f "$MANIFEST" ] || { echo "找不到 $MANIFEST，先跑 scripts/make_campaign.py"; exit 1; }
++ulimit -n "$ULIMIT" 2>/dev/null || echo "[warn] ulimit 未提升到 $ULIMIT"
++mkdir -p logs
++
++echo "=============================================================="
++echo "campaign=$CAMPAIGN  tiers=[$TIERS]  $(date '+%F %T')"
++echo "=============================================================="
++
++while IFS=$'\t' read -r name tier arm cfg cache; do
++  name="${name%$'\r'}"; tier="${tier%$'\r'}"; arm="${arm%$'\r'}"
++  cfg="${cfg%$'\r'}";  cache="${cache%$'\r'}"
++  [ -z "$name" ] && continue
++  [ "$name" = "name" ] && continue
++  keep=0
++  for t in $TIERS; do [ "$t" = "$tier" ] && keep=1; done
++  [ $keep -eq 1 ] || continue
++
++  out=$(awk '/^out_dir:/{print $2}' "$cfg" | tr -d "\r")
++  run_dir="$out/$name"
++  log="logs/$name.log"
++
++  if [ ! -f "$cache/train/meta.json" ] || [ ! -f "$cache/eval/meta.json" ]; then
++    echo "[skip] $name：缓存 $cache 不完整（缺 train 或 eval 的 meta.json）。先跑一次："
++    echo "       $PY scripts/preprocess.py --config $cfg --splits train dev eval --workers 16"
++    echo "       （同一缓存下的所有 run 共用这一份，只需跑一次）"
++    continue
++  fi
++  if [ -f "$run_dir/eval_eval.json" ]; then
++    echo "[done] $name 已有 eval_eval.json，跳过"
++    continue
++  fi
++  if [ "${DRY:-0}" = "1" ]; then
++    echo "[dry ] $name (tier=$tier arm=$arm) -> $log"
++    continue
++  fi
++
++  echo "---- $(date '+%T') $name (tier=$tier arm=$arm) -> $log"
++  if [ -f "$run_dir/last.pt" ]; then
++    "$PY" scripts/train.py --config "$cfg" --tag "$name" --loss "$arm" \
++        --resume "$run_dir/last.pt" >>"$log" 2>&1 || {
++      echo "[fail] $name 训练失败，见 $log"; continue; }
++  else
++    "$PY" scripts/train.py --config "$cfg" --tag "$name" --loss "$arm" \
++        >>"$log" 2>&1 || {
++      echo "[fail] $name 训练失败，见 $log"; continue; }
++  fi
++
++  ckpt="$run_dir/best.pt"
++  [ -f "$ckpt" ] || ckpt="$run_dir/final.pt"
++  if [ ! -f "$ckpt" ]; then
++    echo "[fail] $name 没有 checkpoint，见 $log"; continue
++  fi
++  echo "       eval on eval split"
++  "$PY" scripts/evaluate.py --config "$cfg" --ckpt "$ckpt" --split eval \
++      --save-scores >>"$log" 2>&1 || echo "[warn] $name eval 失败"
++
++  if [ -n "$HOLD_OUT" ] && [ -f "$HOLD_OUT/eval/meta.json" ]; then
++    echo "       eval on held-out distortion draw ($HOLD_OUT)"
++    "$PY" scripts/evaluate.py --config "$cfg" --ckpt "$ckpt" --split eval \
++        --cache-dir "$HOLD_OUT" --out-suffix _holdout >>"$log" 2>&1 \
++        || echo "[warn] holdout eval 失败"
++  fi
++done < "$MANIFEST"
++
++echo "=============================================================="
++echo "$(date '+%T') 汇总："
++"$PY" scripts/collect_campaign.py --root "${OUT_ROOT:-outputs/$CAMPAIGN}" || true
+diff --git a/scripts/run_one_shot.sh b/scripts/run_one_shot.sh
+index d21135e..1483caa 100755
+--- a/scripts/run_one_shot.sh
++++ b/scripts/run_one_shot.sh
+@@ -18,6 +18,8 @@
+ #   * eval/preprocess 的 worker 一多就 "Too many open files"，进来先抬 ulimit
+ #   * 缓存默认 float16（156 GB -> 78 GB），fail 时才回 float32
+ set -uo pipefail
++# 国内直连 huggingface 常常拉不动，默认走镜像（可用环境变量覆盖）
++export HF_ENDPOINT="${HF_ENDPOINT:-https://hf-mirror.com}"
+ 
+ cd "$(dirname "$0")/.." || exit 1
+ PY="${PY:-python3}"
+@@ -98,6 +100,8 @@ if grep -q "blocking issue" logs/diagnose.log && grep -q "found --" logs/diagnos
+ fi
+ 
+ # ---------------------------------------------------------------- 4) 烟测
++# SKIP_SMOKE=1 时跳过：烟测已通过（w_prod 单调降）后重启流水线不必再烧 35 分钟
++if [ "${SKIP_SMOKE:-0}" != "1" ]; then
+ beat "4/6 烟测：wcl 臂 5 轮，只看 w_prod 降不降、显存、步时"
+ run "$PY" scripts/train.py --config "$BASE" --tag smoke --loss wcl \
+     --epochs 5 --eval-every 2 --abort-on-flat --flat-patience 3 \
+@@ -110,6 +114,9 @@ if [ "$DRY" != "1" ]; then
+     exit 2
+   fi
+ fi
++else
++  beat "4/6 烟测：SKIP_SMOKE=1，跳过（已完成 outputs/${CAMP}_smoke）"
++fi
+ 
+ # ---------------------------------------------------------------- 5) campaign
+ beat "5/6 campaign：$TIERS（幂等，已完成的 run 自动跳过）"
+diff --git a/scripts/run_three_arm.sh b/scripts/run_three_arm.sh
+index 832f1d2..8ab62f5 100644
+--- a/scripts/run_three_arm.sh
++++ b/scripts/run_three_arm.sh
+@@ -1,50 +1,50 @@
+-#!/usr/bin/env bash
+-# 三臂完整实验（ce / tfcl / wcl），同一配置、同一缓存、同一 schedule。
+-#
+-#   bash scripts/run_three_arm.sh                 # 全流程：预处理 -> 三臂训练 -> eval 五阶段 -> 汇总
+-#   SKIP_PREP=1 bash scripts/run_three_arm.sh     # 缓存已在，跳过预处理
+-#   ARMS="wcl" bash scripts/run_three_arm.sh      # 只跑一臂
+-#
+-# 注意（原机器上踩过的坑，换机照旧）：
+-#   * 远端只有 python3，没有 python；
+-#   * eval/preprocess 阶段 num_workers=4 会 "Too many open files"，
+-#     必须先把 ulimit -n 提到 65536；
+-#   * 后台跑要 setsid + < /dev/null，否则 ssh 断开被杀。
+-set -uo pipefail
+-
+-CFG="${CFG:-configs/three_arm_phys.yaml}"
+-ARMS="${ARMS:-ce tfcl wcl}"
+-PY="${PY:-python3}"
+-SPLITS="${SPLITS:-train dev eval}"
+-
+-echo "[0/4] 预检（梯度 / AGC / eps / randomize）"
+-"$PY" scripts/diagnose.py --config "$CFG" || {
+-  echo "预检未通过，先修问题再花 GPU 时间"; exit 1; }
+-
+-echo "[1/4] 预处理（AFE 已改为真截断 VAD，缓存必须重建）"
+-if [ "${SKIP_PREP:-0}" = "1" ]; then
+-  echo "      跳过（SKIP_PREP=1）"
+-else
+-  "$PY" scripts/preprocess.py --config "$CFG" --splits $SPLITS || exit 1
+-fi
+-
+-echo "[2/4] 三臂训练"
+-for arm in $ARMS; do
+-  echo "      -> arm=$arm"
+-  "$PY" scripts/train.py --config "$CFG" --tag "$arm" --loss "$arm" || exit 1
+-done
+-
+-echo "[3/4] eval 集五阶段评估"
+-ulimit -n 65536 2>/dev/null || echo "      [warn] ulimit 未提升，可能触发 Too many open files"
+-# out_dir 从配置里读，避免换了 CFG 之后路径对不上
+-OUT=$("$PY" -c "import yaml,sys; print(yaml.safe_load(open('$CFG',encoding='utf-8'))['out_dir'])")
+-for arm in $ARMS; do
+-  ckpt="$OUT/$arm/best.pt"
+-  [ -f "$ckpt" ] || { echo "      [skip] $ckpt 不存在"; continue; }
+-  echo "      -> eval $arm"
+-  "$PY" scripts/evaluate.py --config "$CFG" --ckpt "$ckpt" --split eval --save-scores || exit 1
+-done
+-
+-echo "[4/4] 汇总三臂对比表"
+-"$PY" scripts/collect_arms.py --root "$OUT" | tee "$OUT/three_arm_table.md"
+-echo "完成：$OUT/three_arm_table.md"
++#!/usr/bin/env bash
++# 三臂完整实验（ce / tfcl / wcl），同一配置、同一缓存、同一 schedule。
++#
++#   bash scripts/run_three_arm.sh                 # 全流程：预处理 -> 三臂训练 -> eval 五阶段 -> 汇总
++#   SKIP_PREP=1 bash scripts/run_three_arm.sh     # 缓存已在，跳过预处理
++#   ARMS="wcl" bash scripts/run_three_arm.sh      # 只跑一臂
++#
++# 注意（原机器上踩过的坑，换机照旧）：
++#   * 远端只有 python3，没有 python；
++#   * eval/preprocess 阶段 num_workers=4 会 "Too many open files"，
++#     必须先把 ulimit -n 提到 65536；
++#   * 后台跑要 setsid + < /dev/null，否则 ssh 断开被杀。
++set -uo pipefail
++
++CFG="${CFG:-configs/three_arm_phys.yaml}"
++ARMS="${ARMS:-ce tfcl wcl}"
++PY="${PY:-python3}"
++SPLITS="${SPLITS:-train dev eval}"
++
++echo "[0/4] 预检（梯度 / AGC / eps / randomize）"
++"$PY" scripts/diagnose.py --config "$CFG" || {
++  echo "预检未通过，先修问题再花 GPU 时间"; exit 1; }
++
++echo "[1/4] 预处理（AFE 已改为真截断 VAD，缓存必须重建）"
++if [ "${SKIP_PREP:-0}" = "1" ]; then
++  echo "      跳过（SKIP_PREP=1）"
++else
++  "$PY" scripts/preprocess.py --config "$CFG" --splits $SPLITS || exit 1
++fi
++
++echo "[2/4] 三臂训练"
++for arm in $ARMS; do
++  echo "      -> arm=$arm"
++  "$PY" scripts/train.py --config "$CFG" --tag "$arm" --loss "$arm" || exit 1
++done
++
++echo "[3/4] eval 集五阶段评估"
++ulimit -n 65536 2>/dev/null || echo "      [warn] ulimit 未提升，可能触发 Too many open files"
++# out_dir 从配置里读，避免换了 CFG 之后路径对不上
++OUT=$("$PY" -c "import yaml,sys; print(yaml.safe_load(open('$CFG',encoding='utf-8'))['out_dir'])")
++for arm in $ARMS; do
++  ckpt="$OUT/$arm/best.pt"
++  [ -f "$ckpt" ] || { echo "      [skip] $ckpt 不存在"; continue; }
++  echo "      -> eval $arm"
++  "$PY" scripts/evaluate.py --config "$CFG" --ckpt "$ckpt" --split eval --save-scores || exit 1
++done
++
++echo "[4/4] 汇总三臂对比表"
++"$PY" scripts/collect_arms.py --root "$OUT" | tee "$OUT/three_arm_table.md"
++echo "完成：$OUT/three_arm_table.md"
+diff --git a/scripts/train.py b/scripts/train.py
+index 20d25be..1417e69 100644
+--- a/scripts/train.py
++++ b/scripts/train.py
+@@ -315,7 +315,7 @@ def main():
+                        f"(a trim of that size now costs {wcfg.get('beta_t', 1.0)} "
+                        "mean feature gaps)")
+     else:
+-        lam_eff = float(wcfg["lambda"])
++        lam_eff = float(wcfg.get("lambda", 0.0))
+         logger.log(f"[wcl] loss={loss_mode} lambda_abs={lam_eff:.4f}")
+     lam_t = float(lam_t or 0.0)
+     lam_f = float(lam_f or 0.0)
+@@ -495,7 +495,7 @@ def main():
+             line = " | ".join(f"{p}={dev[p]['eer'] * 100:.2f}%" for p in dev_phases)
+             logger.log(f"[dev] avgEER={avg_eer * 100:.2f}%  {line}")
+             rec.update({"avg_eer": avg_eer,
+-                        **{p: dev[p] for p in phases}})
++                        **{p: v for p, v in dev.items()}})
+             if avg_eer < best_avg:
+                 best_avg = avg_eer
+                 ck = {"model": model.state_dict(), "config": cfg,
